@@ -3,9 +3,10 @@ import cors from 'cors'
 import express from 'express'
 import morgan from 'morgan'
 import { env } from './config/env'
-import { requireAuth } from './middleware/authMiddleware'
-import { errorHandler, notFound } from './middleware/errorHandler'
+import { requireAuth } from './middlewares/authMiddleware'
+import { errorHandler, notFound } from './middlewares/errorHandler'
 import authRouter from './routes/authRoutes'
+import userRouter from './routes/userRoutes'
 
 const app = express()
 
@@ -31,6 +32,7 @@ app.get('/api/v1/protected', requireAuth, (req, res) => {
 
 // Auth routes
 app.use('/api/v1/auth', authRouter)
+app.use('/api/v1/users', userRouter)
 
 // 404 + error handler
 app.use(notFound)
