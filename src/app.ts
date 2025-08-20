@@ -3,6 +3,7 @@ import cors from 'cors'
 import express from 'express'
 import morgan from 'morgan'
 import { env } from './config/env'
+import { requireAuth } from './middleware/authMiddleware'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import authRouter from './routes/authRoutes'
 
@@ -24,6 +25,10 @@ app.get('/api/v1/health', (_req, res) => {
 })
 
 // API routes
+app.get('/api/v1/protected', requireAuth, (req, res) => {
+  res.json({ message: 'You are authenticated', user: (req as any).user })
+})
+
 // Auth routes
 app.use('/api/v1/auth', authRouter)
 
