@@ -1,28 +1,16 @@
-import cors from 'cors'
-import express from 'express'
-import morgan from 'morgan'
+import app from './app'
 import { env } from './config/env'
+import connectDB from './lib/db'
 
-const app = express()
+async function start() {
+  try {
+    await connectDB() // ensure DB is ready before accepting requests
+    app.listen(env.PORT, () => console.log(`🚀 Server running at http://localhost:${env.PORT}`))
+  }
+  catch (err) {
+    console.error('❌ Failed to start server:', err)
+    process.exit(1)
+  }
+}
 
-// Middleware
-app.use(morgan('dev'))
-app.use(cors({
-  origin: env.CLIENT_URL,
-  credentials: true,
-}))
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-
-// Health route
-app.get('/api/v1/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    time: new Date().toISOString(),
-  })
-})
-
-// Start server
-app.listen(env.PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${env.PORT}`)
-})
+start()
