@@ -18,7 +18,7 @@ turfRouter.get('/:id', getTurfHandler)
 
 // Admin/Manager
 turfRouter.post('/', requireAuth, permitRoles('admin', 'manager'), createTurfHandler)
-turfRouter.post('/:id', requireAuth, permitRoles('admin', 'manager'), updateTurfHandler)
-turfRouter.post('/:id', requireAuth, permitRoles('admin', 'manager'), deleteTurfHandler)
+turfRouter.patch('/:id', requireAuth, permitRoles('admin', 'manager'), updateTurfHandler)
+turfRouter.delete('/:id', requireAuth, permitRoles('admin', 'manager'), deleteTurfHandler)
 
 export default turfRouter
