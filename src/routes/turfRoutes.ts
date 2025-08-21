@@ -1,5 +1,6 @@
 import { Router } from 'express'
 
+import { getTurfAvailabilityHandler } from '../controllers/bookingController'
 import {
   createTurfHandler,
   deleteTurfHandler,
@@ -15,6 +16,7 @@ const turfRouter = Router()
 // Public
 turfRouter.get('/', getAllTurfsHandler)
 turfRouter.get('/:id', getTurfHandler)
+turfRouter.get('/:id/availability', getTurfAvailabilityHandler)
 
 // Admin/Manager
 turfRouter.post('/', requireAuth, permitRoles('admin', 'manager'), createTurfHandler)

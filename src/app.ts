@@ -6,6 +6,7 @@ import { env } from './config/env'
 import { requireAuth } from './middlewares/authMiddleware'
 import { errorHandler, notFound } from './middlewares/errorHandler'
 import authRouter from './routes/authRoutes'
+import bookingRouter from './routes/bookingRoutes'
 import turfRouter from './routes/turfRoutes'
 import userRouter from './routes/userRoutes'
 
@@ -37,6 +38,8 @@ app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/users', userRouter)
 // Turf routes
 app.use('/api/v1/turfs', turfRouter)
+// Booking routes
+app.use('/api/v1/bookings', bookingRouter)
 
 // 404 + error handler
 app.use(notFound)
