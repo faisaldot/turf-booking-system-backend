@@ -6,6 +6,7 @@ import { env } from './config/env'
 import { requireAuth } from './middlewares/authMiddleware'
 import { errorHandler, notFound } from './middlewares/errorHandler'
 import authRouter from './routes/authRoutes'
+import turfRouter from './routes/turfRoutes'
 import userRouter from './routes/userRoutes'
 
 const app = express()
@@ -32,7 +33,10 @@ app.get('/api/v1/protected', requireAuth, (req, res) => {
 
 // Auth routes
 app.use('/api/v1/auth', authRouter)
+// User routes
 app.use('/api/v1/users', userRouter)
+// Turf routes
+app.use('/api/v1/turfs', turfRouter)
 
 // 404 + error handler
 app.use(notFound)
