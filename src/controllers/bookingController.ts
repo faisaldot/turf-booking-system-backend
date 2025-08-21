@@ -1,6 +1,7 @@
 import type { Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 
+import { Turf } from '../models/Turf'
 import { createBookingSchema } from '../schemas/bookingSchema'
 import { createBooking, findBookingById, findBookingByUser, getTurfAvailability } from '../services/bookingServices'
 import AppError from '../utils/AppError'
@@ -26,7 +27,13 @@ export const getMyBookingDetailsHandler = asyncHandler(async (req: AuthRequest, 
     throw new AppError('Booking not found', 404)
   }
 
-  if (String(booking.user) !== req.user?.id && req.user?.role === 'user') {
+  const turf = await Turf.findById(booking.turf)
+
+  const isOwner = String(booking.user) === req.user?.id
+  const isAdmin = turf && String(turf.managedBy) === req.user?.id
+  const isManager = req.user!.role === 'manager'
+
+  if (!isOwner && !isAdmin && !isManager) {
     throw new AppError('Forbidden', 403)
   }
   res.json(booking)
