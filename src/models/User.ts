@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import bcrypt from 'bcrypt'
 import mongoose from 'mongoose'
 
@@ -9,7 +10,10 @@ export interface IUser extends mongoose.Document {
   role: 'user' | 'admin' | 'manager'
   isVerified: boolean
   profilePicture?: string
+  passwordResetToken?: string
+  passwordResetExpires?: Date
   comparePassword: (candidate: string) => Promise<boolean>
+  createPasswordResetToken: () => string
 }
 
 const userSchema = new mongoose.Schema<IUser>({
@@ -19,6 +23,8 @@ const userSchema = new mongoose.Schema<IUser>({
   role: { type: String, enum: ['user', 'admin', 'manager'], default: 'user' },
   isVerified: { type: Boolean, default: false },
   profilePicture: { type: String },
+  passwordResetToken: { type: String },
+  passwordResetExpires: Date,
 }, { timestamps: true })
 
 // Hash password
@@ -31,8 +37,19 @@ userSchema.pre('save', async function (next) {
   next()
 })
 
+// Method for compare password
 userSchema.methods.comparePassword = function (candidate: string) {
   return bcrypt.compare(candidate, this.password)
+}
+
+// Method to genereate and hash password reset token
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString('hex')
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex')
+
+  // Token expires in 10 minutes
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000
+  return resetToken
 }
 
 export const User = mongoose.model<IUser>('User', userSchema)
