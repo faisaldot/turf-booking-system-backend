@@ -13,4 +13,7 @@ userRouter.patch('/me', requireAuth, updateMyProfile)
 // Routes for manager to create new admins
 userRouter.post('/admins', requireAuth, permitRoles('manager'), createAdminHandler)
 
+// Routes for manager to get all users
+userRouter.get('/', requireAuth, permitRoles('manager'))
+
 export default userRouter

@@ -1,4 +1,4 @@
-import type { Response } from 'express'
+import type { Request, Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import { User } from '../models/User'
 import { updateProfileSchema } from '../schemas/userSchema'
@@ -32,4 +32,15 @@ export const updateMyProfile = asyncHandler(async (req: AuthRequest, res: Respon
     throw new AppError('User not found', 404)
 
   res.json(updated)
+})
+
+// GET /api/v1/users
+export const getAllUsersHandler = asyncHandler(async (req: Request, res: Response) => {
+  const users = await User.find().select('-password')
+
+  res.status(200).json({
+    message: 'User retrived successfully.',
+    count: users.length,
+    users,
+  })
 })
