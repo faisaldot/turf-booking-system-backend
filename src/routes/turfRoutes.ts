@@ -15,7 +15,7 @@ const turfRouter = Router()
 
 // Public
 turfRouter.get('/', getAllTurfsHandler)
-turfRouter.get('/:id', getTurfHandler)
+turfRouter.get('/:slug', getTurfHandler)
 turfRouter.get('/:id/availability', getTurfAvailabilityHandler)
 
 // Admin/Manager

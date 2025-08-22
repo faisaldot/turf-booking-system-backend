@@ -1,8 +1,13 @@
 import mongoose from 'mongoose'
+import slugify from 'slugify'
 
 export interface ITurf extends mongoose.Document {
   name: string
-  location: string
+  slug: string
+  location: {
+    address: string
+    city: string
+  }
   description?: string
   pricePerSlot: number
   amenities: string[]
@@ -14,8 +19,12 @@ export interface ITurf extends mongoose.Document {
 }
 
 const turfSchema = new mongoose.Schema<ITurf>({
-  name: { type: String, required: true },
-  location: { type: String, required: true },
+  name: { type: String, required: true, unique: true },
+  slug: { type: String, unique: true },
+  location: {
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+  },
   description: { type: String, default: '' },
   pricePerSlot: { type: Number, required: true },
   amenities: { type: [String], default: [] },
@@ -26,5 +35,13 @@ const turfSchema = new mongoose.Schema<ITurf>({
   },
   managedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true })
+
+// Pre save hook to auto-generate the slug before saving
+turfSchema.pre('save', function (next) {
+  if (this.isModified('name')) {
+    this.slug = slugify(this.name, { lower: true, strict: true })
+  }
+  next()
+})
 
 export const Turf = mongoose.model<ITurf>('Turf', turfSchema)

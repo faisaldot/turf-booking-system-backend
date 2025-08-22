@@ -33,7 +33,7 @@ export async function findTurfs(filters: Record<string, any> = {}) {
 }
 
 // Find indibiddual turf services
-export async function findTurfById(id: string) {
+export async function findTurfBySlug(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return null
   }

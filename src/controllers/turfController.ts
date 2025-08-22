@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import { createTurfSchema, updatedTurfSchema } from '../schemas/turfSchema'
-import { createTurf, findTurfById, findTurfs, removeTurf, updateTurf } from '../services/turfServices'
+import { createTurf, findTurfBySlug, findTurfs, removeTurf, updateTurf } from '../services/turfServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
@@ -20,7 +20,7 @@ export const getAllTurfsHandler = asyncHandler(async (req: Request, res: Respons
 
 // Get individual turf controller
 export const getTurfHandler = asyncHandler(async (req: Request, res: Response) => {
-  const turf = await findTurfById(req.params.id)
+  const turf = await findTurfBySlug(req.params.id)
   if (!turf) {
     throw new AppError('Turf not found', 404)
   }
@@ -30,7 +30,7 @@ export const getTurfHandler = asyncHandler(async (req: Request, res: Response) =
 // Update turf controller
 export const updateTurfHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const validate = updatedTurfSchema.parse(req.body)
-  const turf = await findTurfById(req.params.id)
+  const turf = await findTurfBySlug(req.params.id)
   if (!turf) {
     throw new AppError('Turf not found', 404)
   }
@@ -47,7 +47,7 @@ export const updateTurfHandler = asyncHandler(async (req: AuthRequest, res: Resp
 
 // Delete turf controller
 export const deleteTurfHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const turf = await findTurfById(req.params.id)
+  const turf = await findTurfBySlug(req.params.id)
   if (!turf) {
     throw new AppError('Turf not found', 404)
   }
