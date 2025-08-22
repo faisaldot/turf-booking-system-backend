@@ -3,8 +3,8 @@ import type { AuthRequest } from '../middlewares/authMiddleware'
 
 import { Booking } from '../models/Booking'
 import { Turf } from '../models/Turf'
-import { createBookingSchema } from '../schemas/bookingSchema'
-import { createBooking, findBookingById, findBookingByUser, getTurfAvailability } from '../services/bookingServices'
+import { createBookingSchema, updateBookingStatusSchema } from '../schemas/bookingSchema'
+import { createBooking, findBookingById, findBookingByUser, getTurfAvailability, updateBookingStatus } from '../services/bookingServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
@@ -65,4 +65,27 @@ export const getTurfAvailabilityHandler = asyncHandler(async (req: AuthRequest, 
 
   const availability = await getTurfAvailability(req.params.id, new Date(date as string))
   res.json(availability)
+})
+
+// Update booking status handler
+export const updateBookingStatusHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { status } = updateBookingStatusSchema.parse(req.body)
+  const { id: bookingId } = req.params
+
+  const booking = await findBookingById(bookingId)
+  if (!booking) {
+    throw new AppError('Booking not found', 404)
+  }
+
+  // Authorization check: Only a manager or the admin of the specific turf can update the status.
+  const turf = await Turf.findById(booking.turf)
+  const isAdminOfThisTurf = turf && String(turf.managedBy) === req.user?.id
+
+  if (req.user!.role !== 'manager' && !isAdminOfThisTurf) {
+    throw new AppError('Forbidden: You are not authorized to perform this action.', 403)
+  }
+
+  const updatedBooking = await updateBookingStatus(bookingId, status)
+
+  res.json(updatedBooking)
 })

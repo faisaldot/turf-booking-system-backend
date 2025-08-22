@@ -7,3 +7,7 @@ export const createBookingSchema = z.object({
   endTime: z.string(),
   totalPrice: z.number(),
 })
+
+export const updateBookingStatusSchema = z.object({
+  status: z.enum(['pending', 'confirmed', 'cancelled']),
+})

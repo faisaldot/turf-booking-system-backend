@@ -14,7 +14,7 @@ export async function findBookingByUser(userId: string) {
 
 // Find booking service by id
 export async function findBookingById(userId: string) {
-  return await Booking.find({ user: userId }).populate('user', 'name email').populate('turf')
+  return await Booking.findById(userId).populate('user', 'name email').populate('turf')
 }
 
 // Turf Availability service
@@ -34,4 +34,14 @@ export async function getTurfAvailability(turfId: string, date: Date) {
     status: { $ne: 'cancelled' },
   })
   return bookings
+}
+
+// Update booking status service
+export async function updateBookingStatus(bookingId: string, status: 'pending' | 'confirmed' | 'cancelled') {
+  const updatedBooking = await Booking.findByIdAndUpdate(
+    bookingId,
+    { status },
+    { new: true, runValidators: true },
+  )
+  return updatedBooking
 }
