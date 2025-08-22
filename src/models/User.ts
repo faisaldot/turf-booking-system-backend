@@ -9,6 +9,7 @@ export interface IUser extends mongoose.Document {
   phone?: string
   role: 'user' | 'admin' | 'manager'
   isVerified: boolean
+  isActive: boolean
   profilePicture?: string
   passwordResetToken?: string
   passwordResetExpires?: Date
@@ -21,6 +22,7 @@ const userSchema = new mongoose.Schema<IUser>({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, minlength: 6 },
   role: { type: String, enum: ['user', 'admin', 'manager'], default: 'user' },
+  isActive: { type: Boolean, default: true },
   isVerified: { type: Boolean, default: false },
   profilePicture: { type: String },
   passwordResetToken: { type: String },

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { createAdminHandler } from '../controllers/adminController'
+import { createAdminHandler, updateUserStatusHandler } from '../controllers/adminController'
 import { getMyProfile, updateMyProfile } from '../controllers/userController'
 import { requireAuth } from '../middlewares/authMiddleware'
 import { permitRoles } from '../middlewares/roleMiddleware'
@@ -16,4 +16,6 @@ userRouter.post('/admins', requireAuth, permitRoles('manager'), createAdminHandl
 // Routes for manager to get all users
 userRouter.get('/', requireAuth, permitRoles('manager'))
 
+// Routes for manager to update users status
+userRouter.patch('/:id/status', requireAuth, permitRoles('manager'), updateUserStatusHandler)
 export default userRouter

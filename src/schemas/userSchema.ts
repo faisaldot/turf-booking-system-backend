@@ -13,3 +13,7 @@ export const createAdminSchema = z.object({
   password: z.string().min(6),
   phone: z.string().min(11).max(14).optional(),
 })
+
+export const updateUserStatusSchema = z.object({
+  isActive: z.boolean(),
+})

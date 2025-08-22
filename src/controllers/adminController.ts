@@ -1,7 +1,7 @@
 import type { Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import { User } from '../models/User'
-import { createAdminSchema } from '../schemas/userSchema'
+import { createAdminSchema, updateUserStatusSchema } from '../schemas/userSchema'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
@@ -23,6 +23,32 @@ export const createAdminHandler = asyncHandler(async (req: AuthRequest, res: Res
 
   res.status(201).json({
     message: 'Admin account created successfully.',
+    user: userResponse,
+  })
+})
+
+// PATCH /api/v1/users/:id/status
+export const updateUserStatusHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { isActive } = updateUserStatusSchema.parse(req.body)
+  const { id: userId } = req.params
+
+  if (req.user?.id === userId) {
+    throw new AppError('You cannot deactivate your own account', 400)
+  }
+
+  const user = await User.findById(userId)
+
+  if (!user) {
+    throw new AppError('User not found', 404)
+  }
+
+  user.isActive = isActive
+  await user.save()
+
+  const { password: _, ...userResponse } = user.toObject()
+
+  res.status(200).json({
+    message: `User account has been ${isActive ? 'activated' : 'deactivated'}.`,
     user: userResponse,
   })
 })

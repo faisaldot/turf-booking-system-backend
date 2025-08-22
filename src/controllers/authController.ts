@@ -37,6 +37,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Invalid email or password', 401)
   }
 
+  if (!user.isActive) {
+    throw new AppError('Your account has been deactivated. Please contact the support.', 403)
+  }
+
   const ok = await user.comparePassword(password)
   if (!ok) {
     throw new AppError('Invalid email or password', 401)
