@@ -7,6 +7,7 @@ import { requireAuth } from './middlewares/authMiddleware'
 import { errorHandler, notFound } from './middlewares/errorHandler'
 import authRouter from './routes/authRoutes'
 import bookingRouter from './routes/bookingRoutes'
+import paymentRouter from './routes/paymentRoutes'
 import turfRouter from './routes/turfRoutes'
 import userRouter from './routes/userRoutes'
 
@@ -40,6 +41,8 @@ app.use('/api/v1/users', userRouter)
 app.use('/api/v1/turfs', turfRouter)
 // Booking routes
 app.use('/api/v1/bookings', bookingRouter)
+// Payment routes
+app.use('/api/v1/payments', paymentRouter)
 
 // 404 + error handler
 app.use(notFound)
