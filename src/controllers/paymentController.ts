@@ -12,16 +12,16 @@ const sslcz = new SSLCommerzPayment(env.SSL_STORE_ID!, env.SSL_STORE_PASSWORD!, 
 
 // POST /api/v1/payments/init/:bookingID
 export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const { bookingID } = req.params
+  const { bookingId } = req.params
+
+  const booking = await Booking.findById(bookingId)
+  if (!booking) {
+    throw new AppError('Booking not found', 404)
+  }
 
   const user = await User.findById(req.user!.id)
   if (!user) {
     throw new AppError('Authenticated user not found.', 404)
-  }
-
-  const booking = await Booking.findById(bookingID)
-  if (!booking) {
-    throw new AppError('Booking not found', 404)
   }
 
   // Check if the booking belongs to the authenticate user
@@ -53,7 +53,7 @@ export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: 
 
   // Create a new payment record in the database
   await Payment.create({
-    booking: bookingID,
+    booking: bookingId,
     transactionId,
     amount: booking.totalPrice,
     sataus: 'pending',
