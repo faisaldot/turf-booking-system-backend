@@ -6,3 +6,10 @@ export const updateProfileSchema = z.object({
   phone: z.string().min(11).max(14).optional(),
   profilePictures: z.url().optional(),
 })
+
+export const createAdminSchema = z.object({
+  name: z.string().min(2),
+  email: z.email().lowercase(),
+  password: z.string().min(6),
+  phone: z.string().min(11).max(14).optional(),
+})
