@@ -2,6 +2,7 @@ import type { Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import { User } from '../models/User'
 import { createAdminSchema, updateUserStatusSchema } from '../schemas/userSchema'
+import { getAdminDashboardStats, getManagerDashboardStats } from '../services/dashboardService'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
@@ -50,5 +51,25 @@ export const updateUserStatusHandler = asyncHandler(async (req: AuthRequest, res
   res.status(200).json({
     message: `User account has been ${isActive ? 'activated' : 'deactivated'}.`,
     user: userResponse,
+  })
+})
+
+// GET /api/v1/admin/dashboard
+export const getAdminDashboardHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  let stats
+
+  // if the user is a manager, get platform-wide stats.
+  if (req.user!.role === 'manager') {
+    stats = await getManagerDashboardStats()
+  }
+  else {
+    // otherwise, get stats only for the turfs this admin manages
+    const adminId = req.user!.id
+    stats = await getAdminDashboardStats(adminId)
+  }
+
+  res.status(200).json({
+    message: 'Dashboard statistics retrieved successfully.',
+    data: stats,
   })
 })

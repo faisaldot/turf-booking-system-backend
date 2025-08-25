@@ -5,6 +5,7 @@ import morgan from 'morgan'
 import { env } from './config/env'
 import { requireAuth } from './middlewares/authMiddleware'
 import { errorHandler, notFound } from './middlewares/errorHandler'
+import adminRouter from './routes/adminRoutes'
 import authRouter from './routes/authRoutes'
 import bookingRouter from './routes/bookingRoutes'
 import paymentRouter from './routes/paymentRoutes'
@@ -43,6 +44,8 @@ app.use('/api/v1/turfs', turfRouter)
 app.use('/api/v1/bookings', bookingRouter)
 // Payment routes
 app.use('/api/v1/payments', paymentRouter)
+// Admin routes
+app.use('/api/v1/admin', adminRouter)
 
 // 404 + error handler
 app.use(notFound)
