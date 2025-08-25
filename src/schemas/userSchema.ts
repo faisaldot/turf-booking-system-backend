@@ -17,3 +17,8 @@ export const createAdminSchema = z.object({
 export const updateUserStatusSchema = z.object({
   isActive: z.boolean(),
 })
+
+export const updateUserSchema = z.object({
+  role: z.enum(['user', 'admin']).optional(),
+  isActive: z.boolean().optional(),
+})

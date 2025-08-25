@@ -1,8 +1,9 @@
 import type { Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import { User } from '../models/User'
-import { createAdminSchema, updateUserStatusSchema } from '../schemas/userSchema'
+import { createAdminSchema, updateUserSchema, updateUserStatusSchema } from '../schemas/userSchema'
 import { getAdminDashboardStats, getManagerDashboardStats } from '../services/dashboardService'
+import { getAllUsers, updateUserById } from '../services/userServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
@@ -71,5 +72,42 @@ export const getAdminDashboardHandler = asyncHandler(async (req: AuthRequest, re
   res.status(200).json({
     message: 'Dashboard statistics retrieved successfully.',
     data: stats,
+  })
+})
+
+// GET /api/v1/admin/users
+export const getAllUsersHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  // In the future, you can pass req.query to getAllUsers for filtering
+  const users = await getAllUsers({})
+  res.status(200).json({
+    message: 'Users retrieved successfully.',
+    count: users.length,
+    data: users,
+  })
+})
+
+// PATCH /api/v1/admin/users/:id
+export const updateUserHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id: userId } = req.params
+  const validatedData = updateUserSchema.parse(req.body)
+
+  if (Object.keys(validatedData).length === 0) {
+    throw new AppError('No update data provided.', 400)
+  }
+
+  // Prevent a manager from accidentally deactivating or changing their own role
+  if (req.user?.id === userId) {
+    throw new AppError('Managers cannot alter their own status or role.', 403)
+  }
+
+  const updatedUser = await updateUserById(userId, validatedData)
+
+  if (!updatedUser) {
+    throw new AppError('User not found.', 404)
+  }
+
+  res.status(200).json({
+    message: 'User updated successfully.',
+    data: updatedUser,
   })
 })
