@@ -1,27 +1,30 @@
 import type { Request, Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import { createTurfSchema, updatedTurfSchema } from '../schemas/turfSchema'
-import { createTurf, findTurfBySlug, findTurfs, removeTurf, updateTurf } from '../services/turfServices'
+import { createTurf, deactivateTurf, findTurfById, findTurfs, updateTurf } from '../services/turfServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
 // Create turf controller
 export const createTurfHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const validate = createTurfSchema.parse(req.body)
-  const turf = await createTurf({ ...validate, managedBy: req.user?.id } as any)
+  // The creator of the turf is automatically the first admin
+  const turfData = { ...validate, admins: [req.user?.id] }
+
+  const turf = await createTurf(turfData as any)
   res.status(201).json(turf)
 })
 
 // Get all turf controller
 export const getAllTurfsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const turfs = await findTurfs(req.body as any)
+  const turfs = await findTurfs(req.query)
   res.json(turfs)
 })
 
 // Get individual turf controller
 export const getTurfHandler = asyncHandler(async (req: Request, res: Response) => {
-  const turf = await findTurfBySlug(req.params.id)
-  if (!turf) {
+  const turf = await findTurfById(req.params.id)
+  if (!turf || !turf.isActive) {
     throw new AppError('Turf not found', 404)
   }
   res.json(turf)
@@ -30,13 +33,15 @@ export const getTurfHandler = asyncHandler(async (req: Request, res: Response) =
 // Update turf controller
 export const updateTurfHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const validate = updatedTurfSchema.parse(req.body)
-  const turf = await findTurfBySlug(req.params.id)
-  if (!turf) {
+  const turf = await findTurfById(req.params.id)
+  if (!turf || !turf?.isActive) {
     throw new AppError('Turf not found', 404)
   }
 
   // Only manager or the admin who manage this turf
-  if (req.user?.role !== 'manager' && String(turf.managedBy) !== String(req.user?.id)) {
+  const isAdminForThisTurf = turf.admins.some(adminId => adminId.equals(req.user?.id))
+
+  if (req.user?.role !== 'manager' && !isAdminForThisTurf) {
     throw new AppError('Forbidden: you do not manage this turf', 403)
   }
 
@@ -47,15 +52,16 @@ export const updateTurfHandler = asyncHandler(async (req: AuthRequest, res: Resp
 
 // Delete turf controller
 export const deleteTurfHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
-  const turf = await findTurfBySlug(req.params.id)
-  if (!turf) {
+  const turf = await findTurfById(req.params.id)
+  if (!turf || !turf.isActive) {
     throw new AppError('Turf not found', 404)
   }
 
-  if (req.user?.role !== 'manager' && String(turf.managedBy) !== String(req.user?.id)) {
+  const isAdminForThisTurf = turf.admins.some(adminId => adminId.equals(req.user?.id))
+  if (req.user?.role !== 'manager' && !isAdminForThisTurf) {
     throw new AppError('Forbidden: you do not manage this turf', 403)
   }
 
-  await removeTurf(req.params.id)
-  res.json({ message: 'Turf deleted' })
+  await deactivateTurf(req.params.id)
+  res.status(200).json({ message: 'Turf deactivated successfully' })
 })

@@ -13,8 +13,9 @@ export interface ITurf extends mongoose.Document {
   amenities: string[]
   images: string[]
   operatingHours: { start: string, end: string }
-  managedBy: mongoose.Types.ObjectId
+  admins: mongoose.Types.ObjectId[]
   createdAt: Date
+  isActive: boolean
   updatedAt: Date
 }
 
@@ -33,7 +34,8 @@ const turfSchema = new mongoose.Schema<ITurf>({
     start: { type: String, required: true },
     end: { type: String, required: true },
   },
-  managedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  admins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
+  isActive: { type: Boolean, default: true, index: true },
 }, { timestamps: true })
 
 // Pre save hook to auto-generate the slug before saving

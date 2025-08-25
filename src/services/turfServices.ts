@@ -10,10 +10,10 @@ export async function createTurf(data: Partial<ITurf>) {
 
 // Find all turfs services
 export async function findTurfs(filters: Record<string, any> = {}) {
-  const query: any = {}
+  const query: any = { isActive: true }
 
   if (filters.location)
-    query.location = { $regex: filters.location, $options: 'i' }
+    query['location.city'] = { $regex: filters.location, $options: 'i' }
 
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     query.pricePerSlot = {}
@@ -29,15 +29,15 @@ export async function findTurfs(filters: Record<string, any> = {}) {
       : String(filters.amenities).split(',').map(s => s.trim())
     query.amenities = { $all: amenities }
   }
-  return Turf.find(query).populate('managedBy', 'name email')
+  return Turf.find(query).populate('admins', 'name email')
 }
 
 // Find indibiddual turf services
-export async function findTurfBySlug(id: string) {
+export async function findTurfById(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return null
   }
-  return Turf.findById(id).populate('managedBy', 'name email')
+  return Turf.findById(id).populate('admins', 'name email')
 }
 
 // Update turf services
@@ -50,10 +50,10 @@ export async function updateTurf(id: string, data: Partial<ITurf>) {
 }
 
 // Remove turf service
-export async function removeTurf(id: string) {
+export async function deactivateTurf(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return null
   }
 
-  return Turf.findByIdAndDelete(id)
+  return Turf.findByIdAndUpdate(id, { isActive: false }, { new: true })
 }

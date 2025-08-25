@@ -7,7 +7,10 @@ export const operatingHoursSchema = z.object({
 
 export const createTurfSchema = z.object({
   name: z.string().min(3),
-  location: z.string().min(3),
+  location: z.object({
+    address: z.string().min(3),
+    city: z.string().min(3),
+  }),
   description: z.string().optional(),
   pricePerSlot: z.number().nonnegative(),
   amenities: z.array(z.string()).optional(),
