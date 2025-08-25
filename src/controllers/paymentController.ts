@@ -29,16 +29,21 @@ export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: 
     throw new AppError('Forbidden: This booking does not belongs to you.', 403)
   }
 
+  if (booking.paymentStatus === 'paid') {
+    throw new AppError('This booking has already been paid for.', 400)
+  }
+
   const transactionId = `turf-booking-${crypto.randomUUID()}`
+  const serverUrl = 'https://2910ea0ddbaa.ngrok-free.app'
 
   const paymentData = {
     total_amount: booking.totalPrice,
     currency: 'BDT',
     tran_id: transactionId,
-    success_url: `${req.protocol}://${req.get('host')}/api/v1/payments/success/${transactionId}`,
-    fail_url: `${req.protocol}://${req.get('host')}/api/v1/payments/fail/${transactionId}`,
-    cancel_url: `${req.protocol}://${req.get('host')}/api/v1/payments/cancel/${transactionId}`,
-    ipn_url: '/ipn', // Optional: for server-to-server notifications
+    success_url: `${serverUrl}/api/v1/payments/success/${transactionId}`,
+    fail_url: `${serverUrl}/api/v1/payments/fail/${transactionId}`,
+    cancel_url: `${serverUrl}/api/v1/payments/cancel/${transactionId}`,
+    ipn_url: `${serverUrl}/api/v1/payments/webhook`,
     shipping_method: 'No',
     product_name: 'Turf Slot Booking',
     product_category: 'Service',
@@ -51,13 +56,11 @@ export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: 
     cus_phone: 'N/A',
   }
 
-  // Create a new payment record in the database
-  await Payment.create({
-    booking: bookingId,
+  await Payment.findOneAndUpdate({ booking: bookingId }, {
     transactionId,
     amount: booking.totalPrice,
-    sataus: 'pending',
-  })
+    status: 'pending',
+  }, { upsert: true, new: true })
 
   const apiResponse = await sslcz.init(paymentData)
   // The response will contain a GatewayPageURL to which we need to redirect the user
@@ -69,29 +72,64 @@ export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: 
   }
 })
 
-// POST /api/v1/payments/success/:transactionId
-export const paymentSuccessHandler = asyncHandler(async (req: Request, res: Response) => {
-  const { transactionId } = req.params
+// POST /api/v1/payments/webhook
+export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Response) => {
+  // The data SSLCommerz sends is URL-encoded, not JSON
+  const notificationData = req.body
 
+  // 1. first, check if the notification has a valid transection status
+  if (notificationData.status !== 'VALID') {
+    console.log(`Webhook received with status: ${notificationData.status}`)
+    // silently ignore failed or cancelled transaction from the webhook
+    // as our fail/cancel URLs will handle the user redirect
+    return res.status(200).send('Webhook received.')
+  }
+
+  // 2. Validate the payment with SSLCommerz to ensure it's genuine
+  const validationResponse = await sslcz.validate(notificationData)
+  if (validationResponse.status !== 'VALID') {
+    // This could be a fraudulent attempt
+    console.error(`Fraudulent IPN detected for tran_id: ${notificationData.tran_id}`)
+    throw new AppError('Payment validation failed', 400)
+  }
+
+  const { tran_id: transactionId } = notificationData
+
+  // 3. Find the payment record
   const payment = await Payment.findOne({ transactionId })
   if (!payment) {
+    // This can happen but is unlikely. Log for investigation.
+    console.error(`Payment record not found for webhook tran_id: ${transactionId}`)
     throw new AppError('Payment record not found', 404)
   }
 
-  // Update payment sataus
+  // 4. Idempotency Check: If already processed, do noting.
+  if (payment.status === 'success') {
+    console.log(`Webhook for ${transactionId} already processed`)
+    return res.status(200).send('Webhook already processed.')
+  }
+
+  // 5. Update payment and booking status (THE SOURCE OF TRUTH)
   payment.status = 'success'
-  payment.gatewayData = req.body
+  payment.gatewayData = notificationData
   await payment.save()
 
-  // Update booking status
   await Booking.findByIdAndUpdate(payment.booking, {
     status: 'confirmed',
     paymentStatus: 'paid',
   })
 
-  // Redirect to the frontend success page
+  console.log(`✅ Payment confirmed for booking ${payment.booking} via webhook.`)
+  res.status(200).send('Payment confiremed successfully.')
+})
+
+// POST /api/v1/payments/success/:transactionId
+export const paymentSuccessHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { transactionId } = req.params
+
   res.redirect(`${env.CLIENT_URL}/booking-success?transactionId=${transactionId}`)
 })
+
 // POST /api/v1/payments/fail/:transactionId
 export const paymentFailHandler = asyncHandler(async (req: Request, res: Response) => {
   const { transactionId } = req.params

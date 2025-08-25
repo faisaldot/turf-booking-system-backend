@@ -1,6 +1,6 @@
 import { Router } from 'express'
 
-import { initialPaymentHandler, paymentCancelHandler, paymentFailHandler, paymentSuccessHandler } from '../controllers/paymentController'
+import { initialPaymentHandler, paymentCancelHandler, paymentFailHandler, paymentSuccessHandler, paymentWebhookHandler } from '../controllers/paymentController'
 import { requireAuth } from '../middlewares/authMiddleware'
 
 const paymentRouter = Router()
@@ -12,5 +12,8 @@ paymentRouter.post('/init/:bookingId', requireAuth, initialPaymentHandler)
 paymentRouter.post('/success/:transactionId', paymentSuccessHandler)
 paymentRouter.post('/fail/:transactionId', paymentFailHandler)
 paymentRouter.post('/cancel/:transactionId', paymentCancelHandler)
+
+// webhook route
+paymentRouter.post('/webhook', paymentWebhookHandler)
 
 export default paymentRouter
