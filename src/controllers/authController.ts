@@ -1,27 +1,110 @@
 import type { Request, Response } from 'express'
 import crypto from 'node:crypto'
+import { Otp } from '../models/Otp'
 import { User } from '../models/User'
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from '../schemas/authSchema'
+import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, verifyOtpSchema } from '../schemas/authSchema'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
+import { sendEmail } from '../utils/sendEmil'
 
 // POST /api/v1/auth/register
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password, phone } = registerSchema.parse(req.body)
 
-  const exists = await User.findOne({ email })
-  if (exists) {
-    throw new AppError('Email already registered', 409)
+  const existingUser = await User.findOne({ email })
+
+  if (existingUser) {
+    if (existingUser.isVerified) {
+      throw new AppError('This email is already registered and verified.', 409)
+    }
+    else {
+      // User exists but is not verified, so we RESEND the OTP
+      console.log('Unverified user exists. Resending OTP.')
+
+      const otpCode = crypto.randomInt(100000, 999999).toString()
+
+      // Update existing OTP or create a new one
+      await Otp.findOneAndUpdate(
+        { email },
+        { otp: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      )
+
+      await sendEmail({
+        to: email,
+        subject: 'Your New Verification Code',
+        html: `
+          <h1>Here is your new OTP</h1>
+          <p>Your new One-Time Password (OTP) is:</p>
+          <h2>${otpCode}</h2>
+          <p>This code will expire in 10 minutes.</p>
+        `,
+      })
+
+      return res.status(200).json({
+        message: 'An unverified account already exists. A new OTP has been sent to your email.',
+      })
+    }
   }
 
-  const user = await User.create({ name, email, password, phone })
+  // This part now only runs for brand new users
+  await User.create({ name, email, password, phone, isVerified: false })
 
+  // Generate OTP
+  const otpCode = crypto.randomInt(100000, 999999).toString()
+
+  // Save the OTP to the database
+  await Otp.create({ email, otp: otpCode, expiresAt: new Date(Date.now() + 10 * 60 * 1000) }) // 10 minute expiry
+
+  // Save OTP email
+  await sendEmail({
+    to: email,
+    subject: 'Verify your email address',
+    html: `
+      <h1>Welcome to Khelbi naki!</h1>
+      <p>Your One-Time Password (OTP) for email verification is:</p>
+      <h2>${otpCode}</h2>
+      <p>This code will expire in 10 minutes.</p>
+    `,
+  })
+
+  res.status(201).json({
+    message: 'Registration successful. Please check your email for an OTP to verify your account.',
+  })
+})
+
+// POST /api/v1/auth/verify-otp
+export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
+  const { email, otp } = verifyOtpSchema.parse(req.body)
+
+  const user = await User.findOne({ email })
+  if (!user) {
+    throw new AppError('User not found', 404)
+  }
+  if (user.isVerified) {
+    throw new AppError('This account is already verified', 400)
+  }
+
+  const otpEntry = await Otp.findOne({ email, otp })
+
+  if (!otpEntry) {
+    throw new AppError('Invalid or expired OTP', 400)
+  }
+
+  // OTP is correct, so verify the user
+  user.isVerified = true
+  await user.save()
+
+  // Clean up the used OTP
+  await Otp.deleteOne({ _id: otpEntry._id })
+
+  // Now, log the user in by issuing tokens
   const accessToken = signAccessToken({ id: user._id, role: user.role })
   const refreshToken = signRefreshToken({ id: user._id, role: user.role })
 
-  res.status(201).json({
-    message: 'Registered successfully',
+  res.status(200).json({
+    message: 'Email verified successfully. You are now logged in.',
     user: { id: user._id, name: user.name, email: user.email, role: user.role },
     accessToken,
     refreshToken,
@@ -35,6 +118,10 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findOne({ email })
   if (!user) {
     throw new AppError('Invalid email or password', 401)
+  }
+
+  if (!user.isVerified) {
+    throw new AppError('Your account has not verified. Please check your email for the OTP', 403)
   }
 
   if (!user.isActive) {

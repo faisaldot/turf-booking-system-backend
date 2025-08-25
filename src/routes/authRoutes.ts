@@ -1,10 +1,11 @@
 import { Router } from 'express'
-import { forgotPassword, login, logout, refreshToken, register, resetPassword } from '../controllers/authController'
+import { forgotPassword, login, logout, refreshToken, register, resetPassword, verifyOtp } from '../controllers/authController'
 import { requireAuth } from '../middlewares/authMiddleware'
 
 const authRouter = Router()
 
 authRouter.post('/register', register)
+authRouter.post('/verify-otp', verifyOtp)
 authRouter.post('/login', login)
 authRouter.post('/refresh-token', refreshToken)
 
