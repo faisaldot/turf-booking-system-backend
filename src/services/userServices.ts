@@ -7,11 +7,6 @@ import type { IUser } from '../models/User'
 import mongoose from 'mongoose'
 import { User } from '../models/User'
 
-export async function getAllUsers(filters: any) {
-  const users = await User.find(filters).select('-password')
-  return users
-}
-
 /**
  * Update a user's details by their ID.
  * @param userId The ID of the user to update

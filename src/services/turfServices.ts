@@ -8,30 +8,6 @@ export async function createTurf(data: Partial<ITurf>) {
   return newTurf
 }
 
-// Find all turfs services
-export async function findTurfs(filters: Record<string, any> = {}) {
-  const query: any = { isActive: true }
-
-  if (filters.location)
-    query['location.city'] = { $regex: filters.location, $options: 'i' }
-
-  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-    query.pricePerSlot = {}
-    if (filters.minPrice !== undefined)
-      query.pricePerSlot.$gte = Number(filters.minPrice)
-    if (filters.maxPrice !== undefined)
-      query.pricePerSlot.$lte = Number(filters.maxPrice)
-  }
-
-  if (filters.amenities) {
-    const amenities = Array.isArray(filters.amenities)
-      ? filters.amenities
-      : String(filters.amenities).split(',').map(s => s.trim())
-    query.amenities = { $all: amenities }
-  }
-  return Turf.find(query).populate('admins', 'name email')
-}
-
 // Find indibiddual turf services
 export async function findTurfById(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {

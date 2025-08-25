@@ -1,9 +1,11 @@
 import type { Request, Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
+import { Turf } from '../models/Turf'
 import { createTurfSchema, updatedTurfSchema } from '../schemas/turfSchema'
-import { createTurf, deactivateTurf, findTurfById, findTurfs, updateTurf } from '../services/turfServices'
+import { createTurf, deactivateTurf, findTurfById, updateTurf } from '../services/turfServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
+import { paginate } from '../utils/pagination'
 
 // Create turf controller
 export const createTurfHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -17,8 +19,15 @@ export const createTurfHandler = asyncHandler(async (req: AuthRequest, res: Resp
 
 // Get all turf controller
 export const getAllTurfsHandler = asyncHandler(async (req: Request, res: Response) => {
-  const turfs = await findTurfs(req.query)
-  res.json(turfs)
+  // Only active turfs should be public
+  const filters = { isActive: true }
+
+  const result = await paginate(Turf, req, filters)
+
+  res.status(200).json({
+    message: 'Turfs retrived successfully.',
+    ...result,
+  })
 })
 
 // Get individual turf controller

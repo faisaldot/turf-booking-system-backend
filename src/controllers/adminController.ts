@@ -3,9 +3,10 @@ import type { AuthRequest } from '../middlewares/authMiddleware'
 import { User } from '../models/User'
 import { createAdminSchema, updateUserSchema, updateUserStatusSchema } from '../schemas/userSchema'
 import { getAdminDashboardStats, getManagerDashboardStats } from '../services/dashboardService'
-import { getAllUsers, updateUserById } from '../services/userServices'
+import { updateUserById } from '../services/userServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
+import { paginate } from '../utils/pagination'
 
 // POST /api/v1/users/admin
 export const createAdminHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -77,12 +78,11 @@ export const getAdminDashboardHandler = asyncHandler(async (req: AuthRequest, re
 
 // GET /api/v1/admin/users
 export const getAllUsersHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
-  // In the future, you can pass req.query to getAllUsers for filtering
-  const users = await getAllUsers({})
+  const result = await paginate(User, req)
+
   res.status(200).json({
     message: 'Users retrieved successfully.',
-    count: users.length,
-    data: users,
+    ...result,
   })
 })
 
