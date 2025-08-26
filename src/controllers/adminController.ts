@@ -3,6 +3,8 @@ import type { AuthRequest } from '../middlewares/authMiddleware'
 import { User } from '../models/User'
 import { createAdminSchema, updateUserSchema, updateUserStatusSchema } from '../schemas/userSchema'
 import { getAdminDashboardStats, getManagerDashboardStats } from '../services/dashboardService'
+import { findTurfById, updateTurf } from '../services/turfServices'
+import { uploadToCloudinary } from '../services/uploadService'
 import { updateUserById } from '../services/userServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
@@ -109,5 +111,36 @@ export const updateUserHandler = asyncHandler(async (req: AuthRequest, res: Resp
   res.status(200).json({
     message: 'User updated successfully.',
     data: updatedUser,
+  })
+})
+
+// PATCH /api/v1/admin/turfs/:id/image
+export const uploadTurfImageHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id: turfId } = req.params
+
+  if (!req.file) {
+    throw new AppError('No image file provided', 400)
+  }
+
+  const turf = await findTurfById(turfId)
+  if (!turf) {
+    throw new AppError('Turf not found.', 404)
+  }
+
+  // Authorization check
+  const isAdminForThisTurf = turf.admins.some(adminId => adminId.equals(req.user!.id))
+  if (req.user?.role !== 'manager' && !isAdminForThisTurf) {
+    throw new AppError('Forbidden: you do not manage this turf.', 403)
+  }
+
+  // Upload the file to Cloudinary in a 'turfs' folder
+  const imageUrl = await uploadToCloudinary(req.file, 'turfs')
+
+  // Add the new image URL to the turf's images array
+  const updatedTurf = await updateTurf(turfId, { $push: { images: imageUrl } })
+
+  res.status(200).json({
+    message: 'Image uploaded and turf updated successfully.',
+    data: updatedTurf,
   })
 })

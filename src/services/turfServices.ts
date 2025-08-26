@@ -17,7 +17,7 @@ export async function findTurfById(id: string) {
 }
 
 // Update turf services
-export async function updateTurf(id: string, data: Partial<ITurf>) {
+export async function updateTurf(id: string, data: mongoose.UpdateQuery<ITurf>) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return null
   }
