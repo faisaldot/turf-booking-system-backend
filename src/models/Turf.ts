@@ -20,7 +20,7 @@ export interface ITurf extends mongoose.Document {
     city: string
   }
   description?: string
-  pricingRules: IPricingRule
+  pricingRules: IPricingRule[]
   defaultPricePerSlot: number
 
   amenities: string[]
@@ -43,7 +43,7 @@ const timeSlotSchema = new mongoose.Schema<ITimeSlot>({
 const pricingRulesSchema = new mongoose.Schema<IPricingRule>({
   dayType: {
     type: String,
-    enum: ['sunday-thursday', 'friday-saturday', 'all-day'],
+    enum: ['sunday-thursday', 'friday-saturday', 'all-days'],
     required: true,
   },
   timeSlots: [timeSlotSchema],

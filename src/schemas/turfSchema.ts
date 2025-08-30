@@ -24,7 +24,7 @@ export const createTurfSchema = z.object({
   }),
   description: z.string().optional(),
 
-  pricingRule: z.array(pricingRuleSchema).min(1, 'At least one pricing rule is required.'),
+  pricingRules: z.array(pricingRuleSchema).min(1, 'At least one pricing rule is required.'),
   defaultPricePerSlot: z.number().nonnegative('Default price mus be a non-negative number.'),
 
   amenities: z.array(z.string()).optional(),

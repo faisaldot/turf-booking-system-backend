@@ -54,7 +54,7 @@ export async function getTurfAvailability(turfId: string, date: Date) {
   const endTime = new Date(`${date.toISOString().split('T')[0]}T${operatingEnd}:00`)
 
   while (currentTime < endTime) {
-    const startTimeString = currentTime.toISOString().substring(0, 5) // "HH:mm"
+    const startTimeString = currentTime.toTimeString().substring(0, 5) // "HH:mm"
 
     const nextHour = new Date(currentTime)
     nextHour.setHours(nextHour.getHours() + 1)
@@ -69,12 +69,12 @@ export async function getTurfAvailability(turfId: string, date: Date) {
       endTime: endTimeString,
       isAvailable: !bookedSlots.has(startTimeString),
       pricePerSlot: pricing.pricePerSlot,
-      dayTypeLabel: pricing.dayType === 'friday-saturday' ? 'FRI-SAT' : 'SUN-THUS',
+      dayTypeLabel: pricing.dayType === 'friday-saturday' ? 'FRI-SAT' : 'SUN-THU',
     })
     currentTime = nextHour
   }
 
-  const dayType = calculateBookingPrice(turf, date, '00:00', '01:))').dayType
+  const dayType = calculateBookingPrice(turf, date, '00:00', '01:00').dayType
   return {
     date: date.toISOString().split('T')[0],
     dayType,

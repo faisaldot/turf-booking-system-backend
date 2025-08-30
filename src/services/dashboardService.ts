@@ -64,7 +64,7 @@ export async function getAdminDashboardStats(adminId: string) {
       revenueSundayThursday: {
         $sum: {
           $cond: [
-            { $and: [{ $eq: ['$dayType', 'friday-saturday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+            { $and: [{ $eq: ['$dayType', 'sunday-thursday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
             '$totalPrice',
             0,
           ],
