@@ -6,7 +6,12 @@ export interface IBooking extends mongoose.Document {
   date: Date
   startTime: string
   endTime: string
+
+  appliedPricePerSlot: number
   totalPrice: number
+  pricingRule: string
+  dayType: string
+
   status: 'pending' | 'confirmed' | 'cancelled'
   paymentStatus: 'unpaid' | 'paid' | 'refunded'
 }
@@ -17,9 +22,17 @@ const bookingSchema = new mongoose.Schema<IBooking>({
   date: { type: Date, required: true },
   startTime: { type: String, required: true },
   endTime: { type: String, required: true },
+
+  appliedPricePerSlot: { type: Number, required: true },
   totalPrice: { type: Number, required: true },
+  pricingRule: { type: String, required: true },
+  dayType: { type: String, required: true },
+
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
   paymentStatus: { type: String, enum: ['unpaid', 'paid', 'refunded'] },
 }, { timestamps: true })
+
+// Index for optimize availability checks
+bookingSchema.index({ turf: 1, date: 1, startTime: 1 })
 
 export const Booking = mongoose.model<IBooking>('Booking', bookingSchema)

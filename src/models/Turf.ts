@@ -1,6 +1,17 @@
 import mongoose from 'mongoose'
 import slugify from 'slugify'
 
+export interface ITimeSlot {
+  startTime: string
+  endTime: string
+  pricePerSlot: number
+}
+
+export interface IPricingRule {
+  dayType: 'sunday-thursday' | 'friday-saturday' | 'all-days'
+  timeSlots: ITimeSlot[]
+}
+
 export interface ITurf extends mongoose.Document {
   name: string
   slug: string
@@ -9,7 +20,9 @@ export interface ITurf extends mongoose.Document {
     city: string
   }
   description?: string
-  pricePerSlot: number
+  pricingRules: IPricingRule
+  defaultPricePerSlot: number
+
   amenities: string[]
   images: string[]
   operatingHours: { start: string, end: string }
@@ -19,6 +32,24 @@ export interface ITurf extends mongoose.Document {
   updatedAt: Date
 }
 
+// TimeSlot Schema
+const timeSlotSchema = new mongoose.Schema<ITimeSlot>({
+  startTime: { type: String, required: true },
+  endTime: { type: String, required: true },
+  pricePerSlot: { type: Number, required: true },
+}, { _id: false })
+
+// PricingRule Schema
+const pricingRulesSchema = new mongoose.Schema<IPricingRule>({
+  dayType: {
+    type: String,
+    enum: ['sunday-thursday', 'friday-saturday', 'all-day'],
+    required: true,
+  },
+  timeSlots: [timeSlotSchema],
+}, { _id: false })
+
+// Turf Schema
 const turfSchema = new mongoose.Schema<ITurf>({
   name: { type: String, required: true, unique: true },
   slug: { type: String, unique: true },
@@ -27,7 +58,10 @@ const turfSchema = new mongoose.Schema<ITurf>({
     city: { type: String, required: true },
   },
   description: { type: String, default: '' },
-  pricePerSlot: { type: Number, required: true },
+
+  pricingRules: [pricingRulesSchema],
+  defaultPricePerSlot: { type: Number, required: true },
+
   amenities: { type: [String], default: [] },
   images: { type: [String], default: [] },
   operatingHours: {
