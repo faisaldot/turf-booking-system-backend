@@ -3,9 +3,9 @@ import { z } from 'zod'
 export const createBookingSchema = z.object({
   turf: z.string(),
   date: z.string().date().transform(str => new Date(str)),
-  startTime: z.string(),
-  endTime: z.string(),
-  totalPrice: z.number(),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format, expected HH:mm'),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format, expected HH:mm'),
+  // totalPrice is no longer required from the client
 })
 
 export const updateBookingStatusSchema = z.object({
