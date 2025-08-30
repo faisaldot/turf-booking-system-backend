@@ -1,10 +1,14 @@
 import type { Request, Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
+import type { ITurf } from '../models/Turf'
+import type { IUser } from '../models/User'
+import mongoose from 'mongoose'
 import SSLCommerzPayment from 'sslcommerz-lts'
 import { env } from '../config/env'
 import { Booking } from '../models/Booking'
 import { Payment } from '../models/Payment'
 import { User } from '../models/User'
+import { sendBookingConfirmationEmail } from '../services/emailServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 
@@ -77,7 +81,7 @@ export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Resp
   // The data SSLCommerz sends is URL-encoded, not JSON
   const notificationData = req.body
 
-  // 1. first, check if the notification has a valid transection status
+  // first, check if the notification has a valid transection status
   if (notificationData.status !== 'VALID') {
     console.log(`Webhook received with status: ${notificationData.status}`)
     // silently ignore failed or cancelled transaction from the webhook
@@ -85,7 +89,7 @@ export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Resp
     return res.status(200).send('Webhook received.')
   }
 
-  // 2. Validate the payment with SSLCommerz to ensure it's genuine
+  // Validate the payment with SSLCommerz to ensure it's genuine
   const validationResponse = await sslcz.validate(notificationData)
   if (validationResponse.status !== 'VALID') {
     // This could be a fraudulent attempt
@@ -95,7 +99,7 @@ export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Resp
 
   const { tran_id: transactionId } = notificationData
 
-  // 3. Find the payment record
+  // Find the payment record
   const payment = await Payment.findOne({ transactionId })
   if (!payment) {
     // This can happen but is unlikely. Log for investigation.
@@ -103,24 +107,47 @@ export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Resp
     throw new AppError('Payment record not found', 404)
   }
 
-  // 4. Idempotency Check: If already processed, do noting.
+  // Idempotency Check: If already processed, do noting.
   if (payment.status === 'success') {
     console.log(`Webhook for ${transactionId} already processed`)
     return res.status(200).send('Webhook already processed.')
   }
 
-  // 5. Update payment and booking status (THE SOURCE OF TRUTH)
-  payment.status = 'success'
-  payment.gatewayData = notificationData
-  await payment.save()
+  // Use a transaction to ensure atomicity
+  const session = await mongoose.startSession()
+  session.startTransaction()
 
-  await Booking.findByIdAndUpdate(payment.booking, {
-    status: 'confirmed',
-    paymentStatus: 'paid',
-  })
+  // Update payment and booking status (THE SOURCE OF TRUTH)
 
-  console.log(`✅ Payment confirmed for booking ${payment.booking} via webhook.`)
-  res.status(200).send('Payment confiremed successfully.')
+  try {
+    payment.status = 'success'
+    payment.gatewayData = notificationData
+    await payment.save({ session })
+
+    const updatedBooking = await Booking.findByIdAndUpdate(payment.booking, {
+      status: 'confirmed',
+      paymentStatus: 'paid',
+    }, { new: true, session }).populate<{ user: IUser, turf: ITurf }>('user turf') as any
+
+    if (!updatedBooking) {
+      throw new AppError('Booking not found during webhook proccessing', 404)
+    }
+
+    // Send the confirmation email
+    await sendBookingConfirmationEmail(updatedBooking.user, updatedBooking, updatedBooking.turf)
+
+    await session.commitTransaction()
+    console.log(`✅ Payment confirmed for booking ${payment.booking} via webhook.`)
+    res.status(200).send('Payment confiremed successfully.')
+  }
+  catch (error) {
+    await session.abortTransaction()
+    console.error('Error during webhook processing:', error)
+    throw error
+  }
+  finally {
+    session.endSession()
+  }
 })
 
 // POST /api/v1/payments/success/:transactionId
