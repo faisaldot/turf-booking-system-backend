@@ -97,12 +97,17 @@ export const getMyBookingDetailsHandler = asyncHandler(async (req: AuthRequest, 
 // Get turf availability handler
 export const getTurfAvailabilityHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { date } = req.query
+  const { id: turfId } = req.params
+
   if (!date || typeof date !== 'string') {
     throw new AppError('Date query parameter is required', 400)
   }
 
-  const availability = await getTurfAvailability(req.params.id, new Date(date as string))
-  res.json(availability)
+  const availabilityData = await getTurfAvailability(turfId, new Date(date))
+  res.status(200).json({
+    success: true,
+    data: availabilityData,
+  })
 })
 
 // Update booking status handler
