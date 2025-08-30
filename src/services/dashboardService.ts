@@ -3,10 +3,7 @@ import { Booking } from '../models/Booking'
 import { Turf } from '../models/Turf'
 import { User } from '../models/User'
 
-/**
- * Calculate dashboard statistics for a specific turf admin.
- * @param adminId - The ID of the admin user
- */
+// Calculate dashboard statistics for a specific turf admin.
 export async function getAdminDashboardStats(adminId: string) {
   const adminObjectId = new mongoose.Types.ObjectId(adminId)
 
@@ -19,6 +16,10 @@ export async function getAdminDashboardStats(adminId: string) {
       totalRevenue: 0,
       totalBookings: 0,
       upcomingBookings: 0,
+      revenueByDayType: {
+        'sunday-thursday': 0,
+        'friday-saturday': 0,
+      },
       bookingStatusCounts: {
         pending: 0,
         confirmed: 0,
@@ -59,6 +60,26 @@ export async function getAdminDashboardStats(adminId: string) {
         },
       },
 
+      // Revenue breakdown by dayTypes
+      revenueSundayThursday: {
+        $sum: {
+          $cond: [
+            { $and: [{ $eq: ['$dayType', 'friday-saturday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+            '$totalPrice',
+            0,
+          ],
+        },
+      },
+      revenueFridaySaturday: {
+        $sum: {
+          $cond: [
+            { $and: [{ $eq: ['$dayType', 'friday-saturday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+            '$totalPrice',
+            0,
+          ],
+        },
+      },
+
       // Count statuses
       pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
       confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
@@ -71,6 +92,10 @@ export async function getAdminDashboardStats(adminId: string) {
         totalRevenue: 1,
         totalBooking: 1,
         upcomingBookings: 1,
+        revenueByDayType: {
+          'sunday-thursday': '$revenueSundayThursday',
+          'friday-saturday': '$revenueFridaySaturday',
+        },
         bookingStatusCounts: {
           pending: '$pending',
           confirmed: '$confirmed',
@@ -85,43 +110,38 @@ export async function getAdminDashboardStats(adminId: string) {
     totalRevenue: 0,
     totalBookings: 0,
     upcomingBookings: 0,
+    revenueByDayType: { 'sunday-thursday': 0, 'friday-saturday': 0 },
     bookingsStatusCounts: { pending: 0, confirmed: 0, cancelled: 0 },
   }
 }
 
-/**
- * Calculate dashboard statistics for the platform manager (super admin).
- */
+// Calculate dashboard statistics for the platform manager (super admin).
 export async function getManagerDashboardStats() {
-  // Perform multiple queries to get all platform stats
-  const totalUsers = User.countDocuments({ role: 'user' })
-  const totalTurfs = Turf.countDocuments({ isActive: true })
-
-  const bookingStats = Booking.aggregate([
-    { $group: {
-      _id: null,
-      totalRevenue: {
-        $sum: {
-          $cond: [
-            { $and: [{ $eq: ['$status', 'confirmed'] }, { $eq: ['$paymentStatus', 'paid'] }] },
-            '$totalPrice',
-            0,
-          ],
+  // Run all promise in parallel for better performance
+  const [userCount, turfCount, bookingResult] = await Promise.all([
+    User.countDocuments({ role: 'user' }),
+    Turf.countDocuments({ isActive: true }),
+    Booking.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: {
+              $cond: [{ $eq: ['$paymentStatus', 'paid'] }, '$totalPrice', 0],
+            },
+          },
+          totalBooking: { $sum: 1 },
         },
       },
-      totalBooking: { $sum: 1 },
-    } },
-    {
-      $project: {
-        _id: 0,
-        totalRevenue: 1,
-        totalBookings: 1,
+      {
+        $project: {
+          _id: 0,
+          totalRevenue: 1,
+          totalBookings: 1,
+        },
       },
-    },
+    ]),
   ])
-
-  // Run all promise in parallel for better performance
-  const [userCount, turfCount, bookingResult] = await Promise.all([totalUsers, totalTurfs, bookingStats])
 
   const stats = bookingResult[0] || { totalRevenue: 0, totalBookings: 0 }
 
