@@ -32,7 +32,9 @@ const bookingSchema = new mongoose.Schema<IBooking>({
   paymentStatus: { type: String, enum: ['unpaid', 'paid', 'refunded'] },
 }, { timestamps: true })
 
-// Index for optimize availability checks
-bookingSchema.index({ turf: 1, date: 1, startTime: 1 })
+// Indexes for performance
+bookingSchema.index({ turf: 1, date: 1, startTime: 1 }) // For availability checks (already present)
+bookingSchema.index({ user: 1, createdAt: -1 }) // For fetching a user's booking history
+bookingSchema.index({ dayType: 1, date: 1 }) // For analytics queries
 
 export const Booking = mongoose.model<IBooking>('Booking', bookingSchema)
