@@ -3,10 +3,12 @@ import { env } from '../config/env'
 import AppError from './AppError'
 
 export function signAccessToken(payload: object) {
+  // @ts-ignore
   return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN })
 }
 
 export function signRefreshToken(payload: object) {
+  // @ts-ignore
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.REFRESH_EXPIRES_IN })
 }
 
