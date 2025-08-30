@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import {
+  createAdminHandler,
   getAdminDashboardHandler,
   getAllUsersHandler,
   updateUserHandler,
+  updateUserStatusHandler,
   uploadTurfImageHandler,
 } from '../controllers/adminController'
 import { requireAuth } from '../middlewares/authMiddleware'
@@ -23,5 +25,8 @@ adminRouter.patch('/turfs/:id/image', permitRoles('admin', 'manager'), upload.si
 // User management routes (manager only)
 adminRouter.get('/users', permitRoles('manager'), getAllUsersHandler)
 adminRouter.patch('/users/:id', permitRoles('manager'), updateUserHandler)
+
+adminRouter.post('/users/admin', permitRoles('manager'), createAdminHandler)
+adminRouter.patch('/users/:id/status', permitRoles('manager'), updateUserStatusHandler)
 
 export default adminRouter
