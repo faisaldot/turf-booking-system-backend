@@ -1,7 +1,7 @@
 import app from './app'
 import { env } from './config/env'
 import connectDB from './lib/db'
-import { seedInitialTurfs, seedSuperAdmin } from './lib/seeder'
+import { seedInitialTurfs, seedSuperAdmin } from './lib/seed'
 
 async function start() {
   try {
