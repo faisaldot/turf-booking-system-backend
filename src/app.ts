@@ -1,6 +1,7 @@
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
+import helmet from 'helmet'
 import morgan from 'morgan'
 import { env } from './config/env'
 import { requireAuth } from './middlewares/authMiddleware'
@@ -15,6 +16,21 @@ import userRouter from './routes/userRoutes'
 const app = express()
 
 // Middlewares
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ['\'self\''],
+      styleSrc: ['\'self\'', '\'unsafe-inline\''],
+      scriptSrc: ['\'self\''],
+      imgSrc: ['\'self\'', 'data:', 'https:'],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+}))
 app.use(morgan('dev'))
 app.use(cors({
   origin: env.CLIENT_URL,
