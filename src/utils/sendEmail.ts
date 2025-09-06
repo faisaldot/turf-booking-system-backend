@@ -23,10 +23,10 @@ export async function sendEmail(options: MailOptions) {
       ...options,
     })
     console.log(`✅ Email sent successfully to ${options.to}: ${info.messageId}`)
-    return info
+    return { success: true, messageId: info.messageId }
   }
-  catch (error) {
+  catch (error: any) {
     console.error(`❌ Error sending email: ${error}`)
-    // In prod we use robust logging service
+    return { success: false, error: error.message }
   }
 }

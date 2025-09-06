@@ -1,7 +1,7 @@
 import type { IBooking } from '../models/Booking'
 import type { ITurf } from '../models/Turf'
 import type { IUser } from '../models/User'
-import { sendEmail } from '../utils/sendEmil'
+import { sendEmail } from '../utils/sendEmail'
 
 export async function sendBookingConfirmationEmail(user: IUser, booking: IBooking, turf: ITurf) {
   const formattedDate = new Date(booking.date).toLocaleDateString('en-US', {

@@ -34,4 +34,7 @@ export const env = {
   MANAGER_NAME: process.env.MANAGER_NAME,
   MANAGER_EMAIL: process.env.MANAGER_EMAIL,
   MANAGER_PASSWORD: process.env.MANAGER_PASSWORD,
+
+  // Server URL
+  SERVER_URL: process.env.SERVER_URL ?? '',
 }

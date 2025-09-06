@@ -6,7 +6,7 @@ import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema,
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
-import { sendEmail } from '../utils/sendEmil'
+import { sendEmail } from '../utils/sendEmail'
 
 // POST /api/v1/auth/register
 export const register = asyncHandler(async (req: Request, res: Response) => {

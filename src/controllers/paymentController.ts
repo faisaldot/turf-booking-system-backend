@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import type { ITurf } from '../models/Turf'
 import type { IUser } from '../models/User'
+import { randomUUID } from 'node:crypto'
 import mongoose from 'mongoose'
 import SSLCommerzPayment from 'sslcommerz-lts'
 import { env } from '../config/env'
@@ -37,8 +38,8 @@ export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: 
     throw new AppError('This booking has already been paid for.', 400)
   }
 
-  const transactionId = `turf-booking-${crypto.randomUUID()}`
-  const serverUrl = 'https://2910ea0ddbaa.ngrok-free.app'
+  const transactionId = `turf-booking-${randomUUID()}`
+  const serverUrl = env.SERVER_URL
 
   const paymentData = {
     total_amount: booking.totalPrice,
