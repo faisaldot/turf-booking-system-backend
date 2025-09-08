@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import type { AuthRequest } from '../middlewares/authMiddleware'
 import { Turf } from '../models/Turf'
 import { createTurfSchema, updatedTurfSchema } from '../schemas/turfSchema'
-import { createTurf, deactivateTurf, findTurfById, updateTurf } from '../services/turfServices'
+import { createTurf, deactivateTurf, findTurf, findTurfById, findTurfBySlug, updateTurf } from '../services/turfServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 import { paginate } from '../utils/pagination'
@@ -32,11 +32,32 @@ export const getAllTurfsHandler = asyncHandler(async (req: Request, res: Respons
 
 // Get individual turf controller
 export const getTurfHandler = asyncHandler(async (req: Request, res: Response) => {
-  const turf = await findTurfById(req.params.id)
-  if (!turf || !turf.isActive) {
+  const { slug } = req.params
+  const turf = await findTurfBySlug(slug)
+
+  if (!turf) {
     throw new AppError('Turf not found', 404)
   }
-  res.json(turf)
+  res.json({
+    message: 'Turf retrieved successfully.',
+    data: turf,
+  })
+})
+
+//  Flexible handler that works with both slug and ID
+export const getTurfFlexibleHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { identifier } = req.params // Can be either slug or ID
+
+  const turf = await findTurf(identifier)
+
+  if (!turf) {
+    throw new AppError('Turf not found', 404)
+  }
+
+  res.json({
+    message: 'Turf retrieved successfully.',
+    data: turf,
+  })
 })
 
 // Update turf controller

@@ -15,8 +15,9 @@ const turfRouter = Router()
 
 // Public
 turfRouter.get('/', getAllTurfsHandler)
-turfRouter.get('/:slug', getTurfHandler)
 turfRouter.get('/:id/availability', getTurfAvailabilityHandler)
+turfRouter.get('/:slug', getTurfHandler)
+turfRouter.get('/:id', getTurfHandler)
 
 // Admin/Manager
 turfRouter.post('/', requireAuth, permitRoles('admin', 'manager'), createTurfHandler)

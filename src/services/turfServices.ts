@@ -8,12 +8,29 @@ export async function createTurf(data: Partial<ITurf>) {
   return newTurf
 }
 
-// Find indibiddual turf services
+// Find indibiddual turf by id service
 export async function findTurfById(id: string) {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return null
   }
   return Turf.findById(id).populate('admins', 'name email')
+}
+
+// Find turf by slug
+export async function findTurfBySlug(slug: string) {
+  if (!slug || typeof slug !== 'string') {
+    return null
+  }
+  return Turf.findOne({ slug, isActive: true }).populate('admins', 'name email')
+}
+
+//  Get turf by ID or slug (flexible function)
+export async function findTurf(identifier: string) {
+  let turf = await findTurfBySlug(identifier)
+  if (!turf && mongoose.Types.ObjectId.isValid(identifier)) {
+    turf = await findTurfById(identifier)
+  }
+  return turf
 }
 
 // Update turf services
