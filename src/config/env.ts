@@ -38,3 +38,11 @@ export const env = {
   // Server URL
   SERVER_URL: process.env.SERVER_URL ?? '',
 }
+
+// Fail-fast in production for missing secrets
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET)
+    throw new Error('JWT_SECRET must be set in production')
+  if (!process.env.JWT_REFRESH_SECRET)
+    throw new Error('JWT_REFRESH_SECRET must be set in production')
+}

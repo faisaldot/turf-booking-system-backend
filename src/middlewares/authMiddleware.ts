@@ -1,7 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
-import jwt from 'jsonwebtoken'
-import { env } from '../config/env'
-import { isBlockListed } from '../utils/tokenBlockList'
+import { verifyAccessToken } from '../utils/jwt'
 
 export interface AuthRequest extends Request {
   user?: { id: string, role: 'user' | 'admin' | 'manager' }
@@ -14,14 +12,13 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return res.status(401).json({ message: 'No token provided' })
   }
 
-  // Check if the token is on the blacklist before verifying
-  if (isBlockListed(token)) {
-    return res.status(401).json({ message: 'Token has been revoked' })
-  }
-
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as jwt.JwtPayload
-    req.user = { id: payload.id, role: payload.role }
+    const payload = verifyAccessToken(token) as { id?: string, role?: string }
+    if (!payload?.id || !payload?.role) {
+      return res.status(401).json({ message: 'Invalid token payload' })
+    }
+
+    req.user = { id: String(payload.id), role: payload.role as any }
     next()
   }
   catch {
