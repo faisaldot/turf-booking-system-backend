@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import { env } from '../config/env'
+import { isBlockListed } from '../utils/tokenBlockList'
 
 export interface AuthRequest extends Request {
   user?: { id: string, role: 'user' | 'admin' | 'manager' }
@@ -11,6 +12,11 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
   const token = auth?.startsWith('Bearer ') ? auth.split(' ')[1] : undefined
   if (!token) {
     return res.status(401).json({ message: 'No token provided' })
+  }
+
+  // Check if the token is on the blacklist before verifying
+  if (isBlockListed(token)) {
+    return res.status(401).json({ message: 'Token has been revoked' })
   }
 
   try {
