@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { env } from '../config/env'
 import AppError from './AppError'
-import { isBlockListed } from './tokenBlockList'
 
 export function signAccessToken(payload: object) {
   // @ts-ignore
@@ -14,10 +13,6 @@ export function signRefreshToken(payload: object) {
 }
 
 export function verifyAccessToken(token: string): any {
-  if (isBlockListed(token)) {
-    throw new AppError('Token has been revoked', 401)
-  }
-
   try {
     return jwt.verify(token, env.JWT_SECRET)
   }
@@ -27,9 +22,6 @@ export function verifyAccessToken(token: string): any {
 }
 
 export function verifyRefreshToken(token: string): any {
-  if (isBlockListed(token)) {
-    throw new AppError('Token has been revoked', 401)
-  }
   try {
     return jwt.verify(token, env.JWT_REFRESH_SECRET)
   }

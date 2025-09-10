@@ -2,6 +2,7 @@ import app from './app'
 import { env } from './config/env'
 import connectDB from './lib/db'
 import { seedInitialTurfs, seedSuperAdmin } from './lib/seed'
+import { startPeriodicCleanup } from './services/cleanupServices'
 import AppError from './utils/AppError'
 
 async function validateSecrets() {
@@ -19,6 +20,10 @@ async function start() {
     await connectDB() // ensure DB is ready before accepting requests
     await seedSuperAdmin() // ensure manager exist
     await seedInitialTurfs()
+    // Start periodic cleanup (optional)
+    if (process.env.NODE_ENV === 'production') {
+      startPeriodicCleanup()
+    }
     app.listen(env.PORT, () => console.log(`🚀 Server running at http://localhost:${env.PORT}`))
   }
   catch (err) {

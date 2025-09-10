@@ -15,7 +15,7 @@ export const registerSchema = z.object({
 // Login schema
 export const loginSchema = z.object({
   email: z.email().lowercase(),
-  password: z.string().min(6), // We're not validating strength here, as a user might be logging in with an older, weaker password. The strength check is for new registrations.
+  password: z.string().min(1, 'Password is required'),
 })
 
 // Forgot password schema
