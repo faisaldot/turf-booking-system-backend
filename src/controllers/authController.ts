@@ -1,12 +1,16 @@
 import type { Request, Response } from 'express'
 import crypto from 'node:crypto'
+import { env } from '../config/env'
 import { Otp } from '../models/Otp'
 import { User } from '../models/User'
 import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema, verifyOtpSchema } from '../schemas/authSchema'
+import { sendTemplatedEmail } from '../services/emailServices'
 import AppError from '../utils/AppError'
 import asyncHandler from '../utils/asyncHandler'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
+import { checkOtpRateLimit, recordFailedAttempt, resetAttempt } from '../utils/otpRateLimit'
 import { sendEmail } from '../utils/sendEmail'
+import { addToBlocklist } from '../utils/tokenBlockList'
 
 // POST /api/v1/auth/register
 export const register = asyncHandler(async (req: Request, res: Response) => {
@@ -78,8 +82,11 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   const { email, otp } = verifyOtpSchema.parse(req.body)
 
+  checkOtpRateLimit(email)
+
   const user = await User.findOne({ email })
   if (!user) {
+    recordFailedAttempt(email)
     throw new AppError('User not found', 404)
   }
   if (user.isVerified) {
@@ -89,6 +96,8 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   const otpEntry = await Otp.findOne({ email, otp })
 
   if (!otpEntry) {
+    recordFailedAttempt(email)
+
     throw new AppError('Invalid or expired OTP', 400)
   }
 
@@ -96,6 +105,7 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   user.isVerified = true
   await user.save()
 
+  resetAttempt(email)
   // Clean up the used OTP
   await Otp.deleteOne({ _id: otpEntry._id })
 
@@ -175,17 +185,20 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
   const resetToken = user.createPasswordResetToken()
   await user.save({ validateBeforeSave: false })
 
-  /*
-      In a real app, we would send the token via email.
-      For development, we'll send it in the response.
-      IMPORTANT: Do NOT do this in production.
-  */
-  console.log(`Password reset token: ${resetToken}`)
+  const resetUrl = `${env.CLIENT_URL}/reset-password/${resetToken}`
+
+  await sendTemplatedEmail({
+    to: user.email,
+    subject: 'Password Reset Request',
+    title: 'Password Reset Request',
+    body: `<p>You are receiving this because you (or someone else) have requested the reset of the password for your account.</p>
+          <p>Please click on the following link, or paste this into your browser to complete the process:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>`,
+  })
 
   res.json({
     message: 'Password reset token generated.',
-    // In production, we would not send the token back in the response
-    _dev_reset_token: refreshToken,
   })
 })
 
@@ -224,7 +237,12 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 
 // POST api/v1/auth/logout
 export const logout = asyncHandler(async (req: Request, res: Response) => {
-  // For a stateless JWT-based system, logout is primarily handled on the client-side.
-  // The client should discard the JWT (e.g., remove it from localStorage or cookies).
+  const authHeader = req.headers.authorization
+  const accessToken = authHeader?.split(' ')[1]
+
+  if (accessToken) {
+    addToBlocklist(accessToken)
+  }
+
   res.status(200).json({ message: 'Logout successfully' })
 })

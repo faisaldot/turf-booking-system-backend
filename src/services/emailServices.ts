@@ -36,3 +36,22 @@ export async function sendBookingConfirmationEmail(user: IUser, booking: IBookin
     html: emailHtml,
   })
 }
+
+interface TemplatedEmailOption {
+  to: string
+  subject: string
+  title: string
+  body: string
+}
+
+export async function sendTemplatedEmail(options: TemplatedEmailOption) {
+  const { to, subject, title, body } = options
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+      <h2 style="color: #333;">${title}</h2>
+      ${body}
+      <p style="margin-top: 20px;">Sincerely,<br/>The Khelbi Naki Team</p>
+    </div>
+  `
+  await sendEmail({ to, subject, html: emailHtml })
+}
