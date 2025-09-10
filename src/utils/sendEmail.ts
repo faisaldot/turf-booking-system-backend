@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer'
-import { env } from '../config/env'
 
 interface MailOptions {
   to: string
@@ -8,18 +7,16 @@ interface MailOptions {
 }
 
 const transporter = nodemailer.createTransport({
-  host: env.EMAIL_HOST,
-  port: Number(env.EMAIL_PORT),
-  auth: {
-    user: env.EMAIL_USER,
-    pass: env.EMAIL_PASS,
-  },
+  host: 'localhost', // MailHog SMTP host
+  port: 1025, // MailHog SMTP port
+  secure: false, // MailHog does not use TLS
+  auth: undefined, // no authentication needed
 })
 
 export async function sendEmail(options: MailOptions) {
   try {
     const info = await transporter.sendMail({
-      from: env.EMAIL_FROM,
+      from: 'no-reply@example.com', // can be any sender address
       ...options,
     })
     console.log(`✅ Email sent successfully to ${options.to}: ${info.messageId}`)
