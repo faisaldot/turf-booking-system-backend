@@ -16,6 +16,9 @@ import userRouter from './routes/userRoutes'
 const app = express()
 
 // Middlewares
+app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
+app.use(cookieParser())
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -36,9 +39,6 @@ app.use(cors({
   origin: env.CLIENT_URL,
   credentials: true,
 }))
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-app.use(cookieParser())
 
 // Health check route
 app.get('/api/v1/health', (_req, res) => {

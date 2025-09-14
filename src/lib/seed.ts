@@ -84,7 +84,20 @@ export async function seedInitialTurfs() {
       admins: [manager._id],
     }
 
-    await Turf.create(sampleTurfData)
+    const turfsToCreate = []
+    for (let i = 1; i <= 20; i++) {
+      turfsToCreate.push({
+        ...sampleTurfData,
+        name: `ChattoTurf ${i}`,
+        location: {
+          address: `Bashundhara Residential Area, Block ${String.fromCharCode(64 + Math.ceil(i / 5))}`,
+          city: `City ${Math.ceil(i / 10)}`,
+        },
+        description: `This is a sample turf number ${i}. It offers modern facilities and a great playing experience.`,
+      })
+    }
+
+    await Turf.insertMany(turfsToCreate)
     console.log('✅ Initial turf data seeded successfully!')
   }
   catch (error) {

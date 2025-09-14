@@ -6,8 +6,15 @@ export interface AuthRequest extends Request {
 }
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
-  const auth = req.headers.authorization
-  const token = auth?.startsWith('Bearer ') ? auth.split(' ')[1] : undefined
+  // First try to get token form cookies
+  let token = req.cookies?.accessToken
+
+  // if not in cookies, try Authorization header
+  if (!token) {
+    const auth = req.headers.authorization
+    token = auth?.startsWith('Bearer ') ? auth.split(' ')[1] : undefined
+  }
+
   if (!token) {
     return res.status(401).json({ message: 'No token provided' })
   }

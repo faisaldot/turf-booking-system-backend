@@ -16,14 +16,23 @@ import asyncHandler from '../utils/asyncHandler'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
 import { sendEmail } from '../utils/sendEmail'
 
-// Helper: set refresh token cookie
-function setRefreshCookie(res: Response, token: string) {
-  res.cookie('refreshToken', token, {
+// Helper: set both access and refresh token cookies
+function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+  // Set access token cookie
+  res.cookie('accessToken', accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 1000, // 1 hour (match your JWT_EXPIRES_IN)
+  })
+
+  // Set refresh token cookie
+  res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     path: '/api/v1/auth/refresh-token',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 7 * 24 * 60 * 1000, // 7 days
   })
 }
 
@@ -117,12 +126,11 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   })
 
-  setRefreshCookie(res, refreshToken)
+  setAuthCookies(res, accessToken, refreshToken)
 
   res.status(200).json({
     message: 'Email verified successfully. You are now logged in.',
     user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    accessToken,
   })
 })
 
@@ -147,12 +155,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   })
 
-  setRefreshCookie(res, refreshToken)
+  setAuthCookies(res, accessToken, refreshToken)
 
   res.status(200).json({
     message: 'Login successful',
     user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    accessToken,
   })
 })
 
@@ -170,16 +177,16 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
   // Rotate token
   await storedToken.deleteOne()
   const newRefreshToken = signRefreshToken({ id: payload.id, role: payload.role })
+  const newAccessToken = signAccessToken({ id: payload.id, role: payload.role })
+
   await RefreshToken.create({
     user: payload.id,
     token: newRefreshToken,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   })
 
-  setRefreshCookie(res, newRefreshToken)
-  const accessToken = signAccessToken({ id: payload.id, role: payload.role })
-
-  res.json({ accessToken })
+  setAuthCookies(res, newAccessToken, newRefreshToken)
+  res.json({ message: 'Tokens refreshed successfully' })
 })
 
 // -------------------- FORGOT PASSWORD --------------------
@@ -246,12 +253,11 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   })
 
-  setRefreshCookie(res, refreshToken)
+  setAuthCookies(res, accessToken, refreshToken)
 
   res.json({
     message: 'Password reset successfully.',
     user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    accessToken,
   })
 })
 
@@ -265,6 +271,7 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
       console.error('Error deleting refresh token:', error)
     }
   }
+  res.clearCookie('accessToken')
   res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh-token' })
   res.status(200).json({ message: 'Logout successfully' })
 })
