@@ -18,21 +18,43 @@ import { sendEmail } from '../utils/sendEmail'
 
 // Helper: set both access and refresh token cookies
 function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+  const isProduction = process.env.NODE_ENV === 'production'
+
   // Set access token cookie
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 60 * 60 * 1000, // 1 hour (match your JWT_EXPIRES_IN)
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax', // 'none' for cross-origin in production, 'lax' for development
+    maxAge: 60 * 60 * 1000, // 1 hour
+    path: '/', // Make sure path is root
   })
 
-  // Set refresh token cookie
+  // Set refresh token cookie - FIXED: Remove specific path
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/api/v1/auth/refresh-token',
-    maxAge: 7 * 24 * 60 * 1000, // 7 days
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/', // Changed from '/api/v1/auth/refresh-token' to '/'
+  })
+}
+
+// Helper: clear auth cookies
+function clearAuthCookies(res: Response) {
+  const isProduction = process.env.NODE_ENV === 'production'
+
+  res.clearCookie('accessToken', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
+  })
+
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
   })
 }
 
@@ -131,6 +153,8 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     message: 'Email verified successfully. You are now logged in.',
     user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    accessToken,
+    refreshToken,
   })
 })
 
@@ -146,6 +170,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   if (!user.isActive)
     throw new AppError('Your account has been deactivated. Please contact support.', 403)
 
+  // Clean up any existing refresh tokens for this user (optional security measure)
+  await RefreshToken.deleteMany({ user: user._id })
+
   const accessToken = signAccessToken({ id: user._id, role: user.role })
   const refreshToken = signRefreshToken({ id: user._id, role: user.role })
 
@@ -160,19 +187,41 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     message: 'Login successful',
     user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    accessToken,
+    refreshToken,
   })
 })
 
 // -------------------- REFRESH TOKEN --------------------
 export const refreshToken = asyncHandler(async (req: Request, res: Response) => {
+  // FIXED: Check both cookies and body for refresh token
   const cookieToken = req.cookies?.refreshToken
-  if (!cookieToken)
-    throw new AppError('Refresh token required', 400)
+  const bodyToken = req.body?.refreshToken
+  const token = cookieToken || bodyToken
 
-  const payload = verifyRefreshToken(cookieToken) as any
-  const storedToken = await RefreshToken.findOne({ token: cookieToken })
-  if (!storedToken)
+  if (!token) {
+    throw new AppError('Refresh token required', 400)
+  }
+
+  let payload: any
+  try {
+    payload = verifyRefreshToken(token)
+  }
+  catch {
     throw new AppError('Invalid refresh token', 401)
+  }
+
+  const storedToken = await RefreshToken.findOne({ token })
+  if (!storedToken) {
+    throw new AppError('Invalid refresh token', 401)
+  }
+
+  // Verify the user still exists and is active
+  const user = await User.findById(payload.id)
+  if (!user || !user.isActive) {
+    await storedToken.deleteOne()
+    throw new AppError('User not found or inactive', 401)
+  }
 
   // Rotate token
   await storedToken.deleteOne()
@@ -186,7 +235,12 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
   })
 
   setAuthCookies(res, newAccessToken, newRefreshToken)
-  res.json({ message: 'Tokens refreshed successfully' })
+
+  res.json({
+    message: 'Tokens refreshed successfully',
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+  })
 })
 
 // -------------------- FORGOT PASSWORD --------------------
@@ -244,6 +298,9 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   user.passwordResetExpires = undefined
   await user.save()
 
+  // Clean up any existing refresh tokens for this user
+  await RefreshToken.deleteMany({ user: user._id })
+
   const accessToken = signAccessToken({ id: user._id, role: user.role })
   const refreshToken = signRefreshToken({ id: user._id, role: user.role })
 
@@ -258,20 +315,26 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   res.json({
     message: 'Password reset successfully.',
     user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    accessToken,
+    refreshToken,
   })
 })
 
 // -------------------- LOGOUT --------------------
 export const logout = asyncHandler(async (req: Request, res: Response) => {
-  if (req.cookies?.refreshToken) {
+  // Try to get refresh token from cookies or body
+  const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken
+
+  if (refreshToken) {
     try {
-      await RefreshToken.deleteOne({ token: req.cookies.refreshToken })
+      await RefreshToken.deleteOne({ token: refreshToken })
     }
     catch (error) {
       console.error('Error deleting refresh token:', error)
     }
   }
-  res.clearCookie('accessToken')
-  res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh-token' })
+
+  clearAuthCookies(res)
+
   res.status(200).json({ message: 'Logout successfully' })
 })
