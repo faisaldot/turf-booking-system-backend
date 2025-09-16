@@ -151,29 +151,115 @@ export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Resp
   }
 })
 
-// POST /api/v1/payments/success/:transactionId
+// GET/POST /api/v1/payments/success/:transactionId
 export const paymentSuccessHandler = asyncHandler(async (req: Request, res: Response) => {
   const { transactionId } = req.params
 
-  res.redirect(`${env.CLIENT_URL}/booking-success?transactionId=${transactionId}`)
+  try {
+    // Log the successful payment attempt
+    console.log(`✅ Payment success redirect for transaction: ${transactionId}`)
+
+    // Find and update payment status if not already done by webhook
+    const payment = await Payment.findOne({ transactionId })
+    if (payment && payment.status === 'pending') {
+      // Only update if webhook hasn't processed it yet
+      await Payment.findOneAndUpdate(
+        { transactionId },
+        { status: 'success', gatewayData: req.body || req.query },
+      )
+
+      // Update booking status
+      await Booking.findByIdAndUpdate(payment.booking, {
+        status: 'confirmed',
+        paymentStatus: 'paid',
+      })
+
+      console.log(`✅ Payment status updated via success handler for ${transactionId}`)
+    }
+
+    // Always redirect to frontend
+    const redirectUrl = `${env.CLIENT_URL}/booking-success?transactionId=${transactionId}`
+    console.log(`🔗 Redirecting to: ${redirectUrl}`)
+
+    return res.redirect(redirectUrl)
+  }
+  catch (error) {
+    console.error('Error in payment success handler:', error)
+    // Even if there's an error, redirect to frontend with error parameter
+    return res.redirect(`${env.CLIENT_URL}/booking-success?transactionId=${transactionId}&error=processing`)
+  }
 })
 
-// POST /api/v1/payments/fail/:transactionId
+// GET/POST /api/v1/payments/fail/:transactionId
 export const paymentFailHandler = asyncHandler(async (req: Request, res: Response) => {
   const { transactionId } = req.params
 
-  await Payment.findOneAndUpdate({ transactionId }, { status: 'failed', gatewayData: req.body })
+  try {
+    console.log(`❌ Payment failed for transaction: ${transactionId}`)
 
-  // Redirect to the frontend success page
-  res.redirect(`${env.CLIENT_URL}/booking-failed?transactionId=${transactionId}`)
+    // Update payment status
+    await Payment.findOneAndUpdate(
+      { transactionId },
+      {
+        status: 'failed',
+        gatewayData: req.body || req.query,
+      },
+    )
+
+    // Update booking status to keep it as pending (user might retry payment)
+    const payment = await Payment.findOne({ transactionId })
+    if (payment) {
+      await Booking.findByIdAndUpdate(payment.booking, {
+        status: 'pending', // Keep as pending for potential retry
+        paymentStatus: 'unpaid',
+      })
+    }
+
+    const redirectUrl = `${env.CLIENT_URL}/booking-failed?transactionId=${transactionId}`
+    console.log(`🔗 Redirecting to: ${redirectUrl}`)
+
+    return res.redirect(redirectUrl)
+  }
+  catch (error) {
+    console.error('Error in payment fail handler:', error)
+    // Even if there's an error, redirect to frontend with error parameter
+    return res.redirect(`${env.CLIENT_URL}/booking-failed?transactionId=${transactionId}&error=processing`)
+  }
 })
 
-// POST /api/v1/payments/cancel/:transactionId
+// GET/POST /api/v1/payments/cancel/:transactionId
 export const paymentCancelHandler = asyncHandler(async (req: Request, res: Response) => {
   const { transactionId } = req.params
 
-  await Payment.findOneAndUpdate({ transactionId }, { status: 'cancelled', gatewayData: req.body })
+  try {
+    console.log(`⏹️ Payment cancelled for transaction: ${transactionId}`)
 
-  // Redirect to the frontend cancellation page
-  res.redirect(`${env.CLIENT_URL}/booking-cancelled`)
+    // Update payment status
+    await Payment.findOneAndUpdate(
+      { transactionId },
+      {
+        status: 'cancelled',
+        gatewayData: req.body || req.query,
+      },
+    )
+
+    // Update booking status to keep it as pending (user might retry payment)
+    const payment = await Payment.findOne({ transactionId })
+    if (payment) {
+      await Booking.findByIdAndUpdate(payment.booking, {
+        status: 'pending', // Keep as pending for potential retry
+        paymentStatus: 'unpaid',
+      })
+    }
+
+    const redirectUrl = `${env.CLIENT_URL}/booking-cancelled?transactionId=${transactionId}`
+    console.log(`🔗 Redirecting to: ${redirectUrl}`)
+
+    return res.redirect(redirectUrl)
+  }
+  catch (error) {
+    console.error('Error in payment cancel handler:', error)
+    // Even if there's an error, redirect to frontend with error parameter
+    return res.redirect(`${env.CLIENT_URL}/booking-cancelled?transactionId=${transactionId}&error=processing`)
+  }
 })
