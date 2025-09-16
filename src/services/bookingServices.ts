@@ -16,8 +16,9 @@ export async function findBookingByUser(userId: string) {
 }
 
 // Find booking service by id
-export async function findBookingById(userId: string) {
-  return await Booking.findById(userId).populate('user', 'name email').populate('turf')
+export async function findBookingById(bookingId: string) {
+  console.log(bookingId)
+  return await Booking.findById(bookingId).populate('user', 'name email').populate('turf')
 }
 
 // Turf Availability service
