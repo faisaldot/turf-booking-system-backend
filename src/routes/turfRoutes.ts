@@ -5,6 +5,7 @@ import {
   createTurfHandler,
   deleteTurfHandler,
   getAllTurfsHandler,
+  getTurfFlexibleHandler,
   getTurfHandler,
   updateTurfHandler,
 } from '../controllers/turfController'
@@ -17,7 +18,7 @@ const turfRouter = Router()
 turfRouter.get('/', getAllTurfsHandler)
 turfRouter.get('/:id/availability', getTurfAvailabilityHandler)
 turfRouter.get('/:slug', getTurfHandler)
-turfRouter.get('/:id', getTurfHandler)
+turfRouter.get('/:id', getTurfFlexibleHandler)
 
 // Admin/Manager
 turfRouter.post('/', requireAuth, permitRoles('admin', 'manager'), createTurfHandler)

@@ -154,6 +154,7 @@ export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Resp
 // POST /api/v1/payments/success/:transactionId
 export const paymentSuccessHandler = asyncHandler(async (req: Request, res: Response) => {
   const { transactionId } = req.params
+  console.log(transactionId)
 
   res.redirect(`${env.CLIENT_URL}/booking-success?transactionId=${transactionId}`)
 })
