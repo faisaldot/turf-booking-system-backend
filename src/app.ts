@@ -6,7 +6,6 @@ import morgan from 'morgan'
 import { env } from './config/env'
 import { requireAuth } from './middlewares/authMiddleware'
 import { errorHandler, notFound } from './middlewares/errorHandler'
-import { handleNgrokHeaders } from './middlewares/ngrokMiddleware'
 import adminRouter from './routes/adminRoutes'
 import authRouter from './routes/authRoutes'
 import bookingRouter from './routes/bookingRoutes'
@@ -41,6 +40,7 @@ const corsOptions = {
       'http://localhost:5174',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:5174',
+      'https://sandbox.sslcommerz.com',
     ]
     // Also allow ngrok URLs if in development
     if (env.NODE_ENV === 'development' && (origin.includes('ngrok') || origin.includes('loca.lt'))) {
@@ -92,8 +92,6 @@ app.use(helmet({
 }))
 
 app.use(morgan('dev'))
-
-app.use(handleNgrokHeaders)
 
 // Cookies Logging
 app.use((req, res, next) => {
