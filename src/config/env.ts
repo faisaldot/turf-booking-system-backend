@@ -1,3 +1,5 @@
+/* eslint-disable style/no-trailing-spaces */
+/* eslint-disable style/indent */
 import path from 'node:path'
 import dotenv from 'dotenv'
 
@@ -20,9 +22,14 @@ export const env = {
 
   // URLs
   CLIENT_URL: process.env.CLIENT_URL ?? 'http://localhost:5173',
+<<<<<<< HEAD
   SERVER_URL: process.env.SERVER_URL ?? 'http://localhost:9000',
   PUBLIC_URL: process.env.PUBLIC_URL,
 
+=======
+  SERVER_URL: process.env.SERVER_URL ?? 'http://localhost:9000', 
+   // eita chnage hobe ei khane ngork er ta hobe testing purpose a and both .env.production .env . development
+>>>>>>> 7630f43f571813a4935d320c505cd2d042134052
   // JWT Configuration
   JWT_SECRET: process.env.JWT_SECRET ?? 'fallback-dev-secret-key-minimum-32-characters',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? '1h',

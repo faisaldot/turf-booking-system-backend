@@ -8,6 +8,7 @@ import asyncHandler from '../utils/asyncHandler'
 // GET /api/v1/me/
 export const getMyProfile = asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findById(req.user!.id).select('-password')
+  console.log(user)
   if (!user)
     throw new AppError('User not found', 404)
   res.json(user)
