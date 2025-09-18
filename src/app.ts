@@ -35,11 +35,8 @@ const corsOptions = {
 
     const allowedOrigins = [
       env.CLIENT_URL,
-<<<<<<< HEAD
       env.SERVER_URL,
       env.PUBLIC_URL,
-=======
->>>>>>> 7630f43f571813a4935d320c505cd2d042134052
       'http://localhost:5173',
       'http://localhost:5174',
       'http://127.0.0.1:5173',
@@ -47,11 +44,6 @@ const corsOptions = {
     ]
     // Also allow ngrok URLs if in development
     if (env.NODE_ENV === 'development' && (origin.includes('ngrok') || origin.includes('loca.lt'))) {
-      return callback(null, true)
-    }
-
-    // Also allow ngrok URLs if in development
-    if (env.NODE_ENV === 'development' && origin.includes('ngrok')) {
       return callback(null, true)
     }
 
@@ -119,14 +111,6 @@ app.get('/api/v1/health', (_req, res) => {
     now: new Date().toISOString(),
     env: process.env.NODE_ENV || 'development',
   })
-})
-
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, {
-    cookies: req.cookies,
-    origin: req.headers.origin,
-  })
-  next()
 })
 
 // API routes

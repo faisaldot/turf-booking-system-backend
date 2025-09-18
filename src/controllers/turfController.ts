@@ -33,8 +33,8 @@ export const getAllTurfsHandler = asyncHandler(async (req: Request, res: Respons
 // Get individual turf controller
 export const getTurfHandler = asyncHandler(async (req: Request, res: Response) => {
   const { slug } = req.params
-  console.log(slug)
   const turf = await findTurfBySlug(slug)
+
   if (!turf) {
     throw new AppError('Turf not found', 404)
   }
@@ -47,7 +47,7 @@ export const getTurfHandler = asyncHandler(async (req: Request, res: Response) =
 //  Flexible handler that works with both slug and ID
 export const getTurfFlexibleHandler = asyncHandler(async (req: Request, res: Response) => {
   const { identifier } = req.params // Can be either slug or ID
-  console.log(identifier)
+
   const turf = await findTurf(identifier)
 
   if (!turf) {

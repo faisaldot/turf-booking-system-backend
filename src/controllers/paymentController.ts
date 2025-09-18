@@ -158,7 +158,6 @@ export const paymentWebhookHandler = asyncHandler(async (req: Request, res: Resp
 // GET/POST /api/v1/payments/success/:transactionId
 export const paymentSuccessHandler = asyncHandler(async (req: Request, res: Response) => {
   const { transactionId } = req.params
-  console.log(transactionId)
 
   try {
     // Log the successful payment attempt
@@ -185,10 +184,7 @@ export const paymentSuccessHandler = asyncHandler(async (req: Request, res: Resp
     // Always redirect to frontend
     const redirectUrl = `${env.CLIENT_URL}/booking-success?transactionId=${transactionId}`
     console.log(`🔗 Redirecting to: ${redirectUrl}`)
-<<<<<<< HEAD
 
-=======
->>>>>>> 7630f43f571813a4935d320c505cd2d042134052
     res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
     res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(redirectUrl)
@@ -229,18 +225,13 @@ export const paymentFailHandler = asyncHandler(async (req: Request, res: Respons
 
     const redirectUrl = `${env.CLIENT_URL}/booking-failed?transactionId=${transactionId}`
     console.log(`🔗 Redirecting to: ${redirectUrl}`)
-<<<<<<< HEAD
 
-=======
->>>>>>> 7630f43f571813a4935d320c505cd2d042134052
     res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
     res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(redirectUrl)
   }
   catch (error) {
     console.error('Error in payment fail handler:', error)
-    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
-    res.header('Access-Control-Allow-Credentials', 'true')
     // Even if there's an error, redirect to frontend with error parameter
     res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
     res.header('Access-Control-Allow-Credentials', 'true')
@@ -275,18 +266,13 @@ export const paymentCancelHandler = asyncHandler(async (req: Request, res: Respo
 
     const redirectUrl = `${env.CLIENT_URL}/booking-cancelled?transactionId=${transactionId}`
     console.log(`🔗 Redirecting to: ${redirectUrl}`)
-<<<<<<< HEAD
 
-=======
->>>>>>> 7630f43f571813a4935d320c505cd2d042134052
     res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
     res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(redirectUrl)
   }
   catch (error) {
     console.error('Error in payment cancel handler:', error)
-    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
-    res.header('Access-Control-Allow-Credentials', 'true')
     // Even if there's an error, redirect to frontend with error parameter
     res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
     res.header('Access-Control-Allow-Credentials', 'true')

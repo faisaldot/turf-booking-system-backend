@@ -201,9 +201,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 // -------------------- REFRESH TOKEN --------------------
 export const refreshToken = asyncHandler(async (req: Request, res: Response) => {
   // FIXED: Check both cookies and body for refresh token
-  // const cookieToken = req.cookies?.refreshToken
+  const cookieToken = req.cookies?.refreshToken
   const bodyToken = req.body?.refreshToken
-  const token = bodyToken
+  const token = cookieToken || bodyToken
 
   if (!token) {
     throw new AppError('Refresh token required', 400)
