@@ -39,16 +39,16 @@ export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: 
   }
 
   const transactionId = `turf-booking-${randomUUID()}`
-  const serverUrl = env.SERVER_URL
+  const publicUrl = env.PUBLIC_URL
 
   const paymentData = {
     total_amount: booking.totalPrice,
     currency: 'BDT',
     tran_id: transactionId,
-    success_url: `${serverUrl}/api/v1/payments/success/${transactionId}`,
-    fail_url: `${serverUrl}/api/v1/payments/fail/${transactionId}`,
-    cancel_url: `${serverUrl}/api/v1/payments/cancel/${transactionId}`,
-    ipn_url: `${serverUrl}/api/v1/payments/webhook`,
+    success_url: `${publicUrl}/api/v1/payments/success/${transactionId}`,
+    fail_url: `${publicUrl}/api/v1/payments/fail/${transactionId}`,
+    cancel_url: `${publicUrl}/api/v1/payments/cancel/${transactionId}`,
+    ipn_url: `${publicUrl}/api/v1/payments/webhook`,
     shipping_method: 'No',
     product_name: 'Turf Slot Booking',
     product_category: 'Service',
@@ -70,7 +70,11 @@ export const initialPaymentHandler = asyncHandler(async (req: AuthRequest, res: 
   const apiResponse = await sslcz.init(paymentData)
   // The response will contain a GatewayPageURL to which we need to redirect the user
   if (apiResponse.status === 'SUCCESS') {
-    return res.status(200).json({ url: apiResponse.GatewayPageURL })
+    return res.status(200).json({
+      data: {
+        url: apiResponse.GatewayPageURL,
+      },
+    })
   }
   else {
     throw new AppError('Failed to initiate payment.', 500)
@@ -181,10 +185,14 @@ export const paymentSuccessHandler = asyncHandler(async (req: Request, res: Resp
     const redirectUrl = `${env.CLIENT_URL}/booking-success?transactionId=${transactionId}`
     console.log(`🔗 Redirecting to: ${redirectUrl}`)
 
+    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
+    res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(redirectUrl)
   }
   catch (error) {
     console.error('Error in payment success handler:', error)
+    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
+    res.header('Access-Control-Allow-Credentials', 'true')
     // Even if there's an error, redirect to frontend with error parameter
     return res.redirect(`${env.CLIENT_URL}/booking-success?transactionId=${transactionId}&error=processing`)
   }
@@ -218,11 +226,15 @@ export const paymentFailHandler = asyncHandler(async (req: Request, res: Respons
     const redirectUrl = `${env.CLIENT_URL}/booking-failed?transactionId=${transactionId}`
     console.log(`🔗 Redirecting to: ${redirectUrl}`)
 
+    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
+    res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(redirectUrl)
   }
   catch (error) {
     console.error('Error in payment fail handler:', error)
     // Even if there's an error, redirect to frontend with error parameter
+    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
+    res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(`${env.CLIENT_URL}/booking-failed?transactionId=${transactionId}&error=processing`)
   }
 })
@@ -255,11 +267,15 @@ export const paymentCancelHandler = asyncHandler(async (req: Request, res: Respo
     const redirectUrl = `${env.CLIENT_URL}/booking-cancelled?transactionId=${transactionId}`
     console.log(`🔗 Redirecting to: ${redirectUrl}`)
 
+    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
+    res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(redirectUrl)
   }
   catch (error) {
     console.error('Error in payment cancel handler:', error)
     // Even if there's an error, redirect to frontend with error parameter
+    res.header('Access-Control-Allow-Origin', env.CLIENT_URL)
+    res.header('Access-Control-Allow-Credentials', 'true')
     return res.redirect(`${env.CLIENT_URL}/booking-cancelled?transactionId=${transactionId}&error=processing`)
   }
 })

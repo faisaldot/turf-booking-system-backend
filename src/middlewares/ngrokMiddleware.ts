@@ -16,6 +16,3 @@ export function handleNgrokHeaders(req: Request, res: Response, next: NextFuncti
 
   next()
 }
-
-// Add this to your main app.ts/app.js before routes:
-// app.use(handleNgrokHeaders)

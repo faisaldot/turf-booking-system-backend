@@ -114,7 +114,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(201).json({
     message: 'User created/updated. OTP sent to email for verification.',
-    email: user.email,
+    data: {
+      email: user.email,
+    },
   })
 })
 
@@ -152,9 +154,11 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(200).json({
     message: 'Email verified successfully. You are now logged in.',
-    user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    accessToken,
-    refreshToken,
+    data: {
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      accessToken,
+      refreshToken,
+    },
   })
 })
 
@@ -186,9 +190,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(200).json({
     message: 'Login successful',
-    user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    accessToken,
-    refreshToken,
+    data: {
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      accessToken,
+      refreshToken,
+    },
   })
 })
 

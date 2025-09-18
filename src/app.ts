@@ -29,18 +29,23 @@ app.use(cookieParser())
 // FIXED: Enhanced CORS configuration for cookies
 const corsOptions = {
   origin(origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (like mobile apps, Postman, curl)
     if (!origin)
       return callback(null, true)
 
     const allowedOrigins = [
       env.CLIENT_URL,
-
-      'http://localhost:5173', // Vite default
-      'http://localhost:5174', // Vite alternative
+      env.SERVER_URL,
+      env.PUBLIC_URL,
+      'http://localhost:5173',
+      'http://localhost:5174',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:5174',
     ]
+    // Also allow ngrok URLs if in development
+    if (env.NODE_ENV === 'development' && (origin.includes('ngrok') || origin.includes('loca.lt'))) {
+      return callback(null, true)
+    }
 
     if (allowedOrigins.includes(origin)) {
       callback(null, true)
@@ -50,7 +55,7 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'))
     }
   },
-  credentials: true, // This is crucial for cookies
+  credentials: true, // Essential for cookies
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
@@ -62,8 +67,9 @@ const corsOptions = {
     'X-File-Name',
   ],
   exposedHeaders: ['Set-Cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
 }
-
 app.use(cors(corsOptions))
 
 // FIXED: Enhanced helmet configuration
@@ -89,6 +95,15 @@ app.use(morgan('dev'))
 
 app.use(handleNgrokHeaders)
 
+// Cookies Logging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, {
+    cookies: req.cookies,
+    origin: req.headers.origin,
+  })
+  next()
+})
+
 // Health check route
 app.get('/api/v1/health', (_req, res) => {
   res.json({
@@ -99,9 +114,14 @@ app.get('/api/v1/health', (_req, res) => {
 })
 
 // API routes
-// app.get('/api/v1/protected', requireAuth, (req, res) => {
-//   res.json({ message: 'You are authenticated', user: (req as any).user })
-// })
+app.get('/api/v1/protected', requireAuth, (req, res) => {
+  res.json({
+    message: 'You are authenticated',
+    data: {
+      user: (req as any).user,
+    },
+  })
+})
 
 // Auth routes
 app.use('/api/v1/auth', authRouter)

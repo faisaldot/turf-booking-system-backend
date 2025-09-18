@@ -21,6 +21,7 @@ export const env = {
   // URLs
   CLIENT_URL: process.env.CLIENT_URL ?? 'http://localhost:5173',
   SERVER_URL: process.env.SERVER_URL ?? 'http://localhost:9000',
+  PUBLIC_URL: process.env.PUBLIC_URL,
 
   // JWT Configuration
   JWT_SECRET: process.env.JWT_SECRET ?? 'fallback-dev-secret-key-minimum-32-characters',
