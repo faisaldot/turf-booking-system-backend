@@ -1,6 +1,10 @@
 import { Router } from 'express'
 import {
+  cancelBookingHandler,
+  createAdminBookingHandler,
   createAdminHandler,
+  deleteBookingHandler,
+  getAdminBookingsHandler,
   getAdminDashboardHandler,
   getAllUsersHandler,
   updateUserHandler,
@@ -28,5 +32,10 @@ adminRouter.patch('/users/:id', permitRoles('manager'), updateUserHandler)
 
 adminRouter.post('/users/admin', permitRoles('manager'), createAdminHandler)
 adminRouter.patch('/users/:id/status', permitRoles('manager'), updateUserStatusHandler)
+
+adminRouter.get('/bookings', permitRoles('admin', 'manager'), getAdminBookingsHandler)
+adminRouter.post('/bookings', permitRoles('admin', 'manager'), createAdminBookingHandler)
+adminRouter.patch('/bookings/:id/cancel', permitRoles('admin', 'manager'), cancelBookingHandler)
+adminRouter.delete('/bookings/:id', permitRoles('manager'), deleteBookingHandler)
 
 export default adminRouter

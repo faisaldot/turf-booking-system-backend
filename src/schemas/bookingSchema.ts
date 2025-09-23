@@ -7,6 +7,7 @@ const isoDateString = z.string().refine(s => !Number.isNaN(Date.parse(s)), {
 
 export const createBookingSchema = z.object({
   turf: z.string().trim().min(1),
+  user: z.string().optional(),
   date: isoDateString,
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format, expected HH:mm'),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format, expected HH:mm'),
