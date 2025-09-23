@@ -7,111 +7,139 @@ import { User } from '../models/User'
 export async function getAdminDashboardStats(adminId: string) {
   const adminObjectId = new mongoose.Types.ObjectId(adminId)
 
-  // Step 1: Find all turfs manage by this admin
-  const turfs = await Turf.find({ admins: adminObjectId }).select('_id')
+  // Find all turfs managed by this admin
+  const turfs = await Turf.find({ admins: adminObjectId }).select('_id name')
   const turfIds = turfs.map(turf => turf._id)
 
   if (turfIds.length === 0) {
     return {
+      totalTurfs: 0,
       totalRevenue: 0,
       totalBookings: 0,
       upcomingBookings: 0,
-      revenueByDayType: {
-        'sunday-thursday': 0,
-        'friday-saturday': 0,
-      },
-      bookingStatusCounts: {
-        pending: 0,
-        confirmed: 0,
-        cancelled: 0,
-      },
+      recentBookings: [],
+      monthlyBookings: [],
+      revenueByDayType: { 'sunday-thursday': 0, 'friday-saturday': 0 },
+      bookingStatusCounts: { pending: 0, confirmed: 0, cancelled: 0, expired: 0 },
     }
   }
 
-  // Step 2: Use aggregation pipeline to calculate stats for those turfs
-  const stats = await Booking.aggregate([
-    // Match only booking for the admin's turfs
-    { $match: { turf: { $in: turfIds } } },
-
-    // Group and calculate multiple stats in one pass
-    { $group: {
-      _id: null, // group all document into one
-      totalRevenue: {
-        $sum: {
-          // only sum the price if the booking is confirmed and paid
-          $cond: [
-            { $and: [{ $eq: ['$status', 'confirmed'] }, { $eq: ['$paymentStatus', 'paid'] }] },
-            '$totalPrice',
-            0,
-          ],
+  // Parallel queries for better performance
+  const [statsResult, recentBookings, monthlyStats] = await Promise.all([
+    // Main statistics
+    Booking.aggregate([
+      { $match: { turf: { $in: turfIds } } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ['$status', 'confirmed'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+                '$totalPrice',
+                0,
+              ],
+            },
+          },
+          totalBookings: { $sum: 1 },
+          upcomingBookings: {
+            $sum: {
+              $cond: [
+                { $and: [{ $gte: ['$date', new Date()] }, { $eq: ['$status', 'confirmed'] }] },
+                1,
+                0,
+              ],
+            },
+          },
+          revenueSundayThursday: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ['$dayType', 'sunday-thursday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+                '$totalPrice',
+                0,
+              ],
+            },
+          },
+          revenueFridaySaturday: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ['$dayType', 'friday-saturday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+                '$totalPrice',
+                0,
+              ],
+            },
+          },
+          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+          confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
+          cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+          expired: { $sum: { $cond: [{ $eq: ['$status', 'expired'] }, 1, 0] } },
         },
       },
+    ]),
 
-      totalBookings: { $sum: 1 },
+    // Recent bookings (last 10)
+    Booking.find({ turf: { $in: turfIds } })
+      .populate('user', 'name email')
+      .populate('turf', 'name')
+      .sort({ createdAt: -1 })
+      .limit(10),
 
-      // Count upcoming bookings
-      upcomingBookings: {
-        $sum: {
-          $cond: [
-            { $and: [{ $gte: ['$date', new Date()] }, { $eq: ['$status', 'confirmed'] }] },
-            1,
-            0,
-          ],
+    // Monthly booking stats for chart
+    Booking.aggregate([
+      {
+        $match: {
+          turf: { $in: turfIds },
+          createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       },
-
-      // Revenue breakdown by dayTypes
-      revenueSundayThursday: {
-        $sum: {
-          $cond: [
-            { $and: [{ $eq: ['$dayType', 'sunday-thursday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
-            '$totalPrice',
-            0,
-          ],
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' },
+          },
+          bookings: { $sum: 1 },
+          revenue: {
+            $sum: {
+              $cond: [{ $eq: ['$paymentStatus', 'paid'] }, '$totalPrice', 0],
+            },
+          },
         },
       },
-      revenueFridaySaturday: {
-        $sum: {
-          $cond: [
-            { $and: [{ $eq: ['$dayType', 'friday-saturday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
-            '$totalPrice',
-            0,
-          ],
-        },
-      },
-
-      // Count statuses
-      pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
-      confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
-      cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
-    } },
-    {
-      // Reshape the output
-      $project: {
-        _id: 0,
-        totalRevenue: 1,
-        totalBooking: 1,
-        upcomingBookings: 1,
-        revenueByDayType: {
-          'sunday-thursday': '$revenueSundayThursday',
-          'friday-saturday': '$revenueFridaySaturday',
-        },
-        bookingStatusCounts: {
-          pending: '$pending',
-          confirmed: '$confirmed',
-          cancelled: '$cancelled',
-        },
-      },
-    },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+    ]),
   ])
 
-  // If there are no bookings, the aggregation will return an empty array
-  return stats[0] || {
+  const stats = statsResult[0] || {
     totalRevenue: 0,
     totalBookings: 0,
     upcomingBookings: 0,
-    revenueByDayType: { 'sunday-thursday': 0, 'friday-saturday': 0 },
-    bookingsStatusCounts: { pending: 0, confirmed: 0, cancelled: 0 },
+    revenueSundayThursday: 0,
+    revenueFridaySaturday: 0,
+    pending: 0,
+    confirmed: 0,
+    cancelled: 0,
+    expired: 0,
+  }
+
+  return {
+    totalTurfs: turfs.length,
+    totalRevenue: stats.totalRevenue,
+    totalBookings: stats.totalBookings,
+    upcomingBookings: stats.upcomingBookings,
+    recentBookings,
+    monthlyBookings: monthlyStats,
+    revenueByDayType: {
+      'sunday-thursday': stats.revenueSundayThursday,
+      'friday-saturday': stats.revenueFridaySaturday,
+    },
+    bookingStatusCounts: {
+      pending: stats.pending,
+      confirmed: stats.confirmed,
+      cancelled: stats.cancelled,
+      expired: stats.expired,
+    },
   }
 }
 
