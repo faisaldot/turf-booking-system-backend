@@ -64,20 +64,35 @@ export const getTurfFlexibleHandler = asyncHandler(async (req: Request, res: Res
 export const updateTurfHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const validate = updatedTurfSchema.parse(req.body)
   const turf = await findTurfById(req.params.id)
-  if (!turf || !turf?.isActive) {
+
+  if (!turf) {
     throw new AppError('Turf not found', 404)
   }
 
-  // Only manager or the admin who manage this turf
+  // Authorization check
   const isAdminForThisTurf = turf.admins.some(adminId => adminId.equals(req.user?.id))
+  const isManager = req.user?.role === 'manager'
 
-  if (req.user?.role !== 'manager' && !isAdminForThisTurf) {
+  if (!isManager && !isAdminForThisTurf) {
     throw new AppError('Forbidden: you do not manage this turf', 403)
   }
 
-  const updated = await updateTurf(req.params.id, validate as any)
+  // For managers, allow updating all fields including isActive
+  const updateData = { ...validate }
 
-  res.json(updated)
+  // If updating name, regenerate slug
+  if (validate.name) {
+    // eslint-disable-next-line ts/no-require-imports
+    const slugify = require('slugify')
+    updateData.slug = slugify(validate.name, { lower: true, strict: true })
+  }
+
+  const updated = await updateTurf(req.params.id, updateData)
+
+  res.json({
+    message: 'Turf updated successfully.',
+    data: updated,
+  })
 })
 
 // Delete turf controller

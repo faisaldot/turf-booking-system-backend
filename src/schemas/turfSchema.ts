@@ -30,6 +30,22 @@ export const createTurfSchema = z.object({
   amenities: z.array(z.string()).optional(),
   images: z.array(z.url()).optional(),
   operatingHours: operatingHoursSchema,
+  slug: z.string().optional(),
 })
 
-export const updatedTurfSchema = createTurfSchema.partial()
+export const updatedTurfSchema = z.object({
+  name: z.string().min(3).optional(),
+  location: z.object({
+    address: z.string().min(3),
+    city: z.string().min(3),
+  }).optional(),
+  description: z.string().optional(),
+  pricingRules: z.array(pricingRuleSchema).min(1).optional(),
+  defaultPricePerSlot: z.number().nonnegative().optional(),
+  amenities: z.array(z.string()).optional(),
+  images: z.array(z.url()).optional(),
+  operatingHours: operatingHoursSchema.optional(),
+  isActive: z.boolean().optional(),
+  admins: z.array(z.string()).optional(),
+  slug: z.string().optional(),
+})
