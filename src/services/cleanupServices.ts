@@ -1,5 +1,6 @@
 // Optional service to clean up expired data
 
+import { Booking } from '../models/Booking'
 import { Otp } from '../models/Otp'
 import { RefreshToken } from '../models/RefreshToken'
 
@@ -42,4 +43,26 @@ export function startPeriodicCleanup() {
   }, 60 * 60 * 1000) // 1 hour
 
   console.log('✅ Periodic cleanup scheduled every hour')
+}
+
+/*  Cleanup Service for Expired Bookings */
+export async function cleanupExpiredBookings() {
+  try {
+    const expiredBookings = await Booking.updateMany(
+      {
+        status: 'pending',
+        expiresAt: { $lt: new Date() },
+      },
+      {
+        status: 'expired',
+      },
+    )
+
+    console.log(`🧹 Marked ${expiredBookings.modifiedCount} bookings as expired`)
+    return expiredBookings.modifiedCount
+  }
+  catch (error) {
+    console.error('❌ Error during booking cleanup:', error)
+    throw error
+  }
 }

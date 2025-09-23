@@ -14,6 +14,8 @@ export interface IBooking extends mongoose.Document {
 
   status: 'pending' | 'confirmed' | 'cancelled'
   paymentStatus: 'unpaid' | 'paid' | 'refunded'
+  expiresAt: Date
+
 }
 
 const bookingSchema = new mongoose.Schema<IBooking>({
@@ -30,6 +32,11 @@ const bookingSchema = new mongoose.Schema<IBooking>({
 
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
   paymentStatus: { type: String, enum: ['unpaid', 'paid', 'refunded'] },
+
+  expiresAt: {
+    type: Date,
+    default: () => new Date(Date.now() + 15 * 60, 1000),
+  },
 }, { timestamps: true })
 
 // Indexes for performance

@@ -19,19 +19,24 @@ export const createBookingHandler = asyncHandler(async (req: AuthRequest, res: R
     throw new AppError('Turf not found', 404)
   }
 
-  //  Check if the time slot is already booked
-  const existingBooking = await Booking.findOne({
+  //  Check if the time slot is available (including pending bookings older than 15 minutes)
+  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
+
+  const conflictingBooking = await Booking.findOne({
     turf: validatedInput.turf,
     date: validatedInput.date,
     startTime: validatedInput.startTime,
-    status: { $ne: 'cancelled' },
+    $or: [
+      { status: 'confirmed' },
+      { stauts: 'pending', createdAt: { $gte: fifteenMinutesAgo } }, // Only considering recent pending bookings
+    ],
   })
 
-  if (existingBooking) {
-    throw new AppError('This time slot is already booked for the selected date', 409)
+  if (conflictingBooking) {
+    throw new AppError('This time slot is already booked or temporarily reserved', 409)
   }
 
-  //  Calculate the price using the new service
+  //  Create temporary booking with expiration
   const pricingDetails = calculateBookingPrice(
     turf,
     validatedInput.date,
@@ -39,7 +44,6 @@ export const createBookingHandler = asyncHandler(async (req: AuthRequest, res: R
     validatedInput.endTime,
   )
 
-  // 4. Create the booking with server-calculated price details
   const newBookingData = {
     ...validatedInput,
     user: req.user!.id,
@@ -47,15 +51,17 @@ export const createBookingHandler = asyncHandler(async (req: AuthRequest, res: R
     totalPrice: pricingDetails.totalPrice,
     pricingRule: pricingDetails.appliedRule,
     dayType: pricingDetails.dayType,
-    paymentStatus: 'unpaid', // explicitly set default
+    status: 'pending',
+    paymentStatus: 'unpaid',
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000), // Expires in 15 minutes
   } as any
 
   const newBooking = await createBooking(newBookingData)
 
-  // 5. Send a detailed response as per the documentation
   res.status(201).json({
     message: 'Booking created successfully. Please proceed to payment.',
     booking: newBooking,
+    paymentDeadline: newBooking.expiresAt,
     pricing: {
       pricePerSlot: pricingDetails.pricePerSlot,
       duration: pricingDetails.durationInHours,
