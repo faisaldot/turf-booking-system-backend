@@ -68,7 +68,10 @@ export const createBookingHandler = asyncHandler(async (req: AuthRequest, res: R
 // Get my booking handler
 export const getMyBookingHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const booking = await findBookingByUser(req.user?.id as any)
-  res.json(booking)
+  res.json({
+    message: 'Getting bookings',
+    data: booking,
+  })
 })
 
 // Get my booking details handler
@@ -118,6 +121,14 @@ export const updateBookingStatusHandler = asyncHandler(async (req: AuthRequest, 
   const booking = await findBookingById(bookingId)
   if (!booking) {
     throw new AppError('Booking not found', 404)
+  }
+
+  const isOwner = booking.user.equals(req.user!.id)
+
+  // Allow cancellation by the owner
+  if (isOwner && status === 'cancelled') {
+    const updatedBooking = await updateBookingStatus(bookingId, status)
+    return res.json(updatedBooking)
   }
 
   // Authorization check: Only a manager or the admin of the specific turf can update the status.
