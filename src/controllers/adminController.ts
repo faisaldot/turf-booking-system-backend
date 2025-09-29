@@ -6,7 +6,7 @@ import { Turf } from '../models/Turf'
 import { User } from '../models/User'
 import { createBookingSchema } from '../schemas/bookingSchema'
 import { createAdminSchema, updateUserSchema, updateUserStatusSchema } from '../schemas/userSchema'
-import { createBooking, findBookingById, updateBookingStatus } from '../services/bookingServices'
+import { createBooking, updateBookingStatus } from '../services/bookingServices'
 import { getAdminDashboardStats, getManagerDashboardStats } from '../services/dashboardService'
 import { calculateBookingPrice } from '../services/turfPricingService'
 import { findTurfById, updateTurf } from '../services/turfServices'
@@ -27,7 +27,7 @@ export const createAdminHandler = asyncHandler(async (req: AuthRequest, res: Res
   }
 
   // Create the new user with the 'admin' role
-  const adminUser = await User.create({ name, email, password, phone, role: 'admin' })
+  const adminUser = await User.create({ name, email, password, phone, role: 'admin', isVerified: true })
 
   // Exclude password from the response
   const { password: _, ...userResponse } = adminUser.toObject()
@@ -151,22 +151,32 @@ export const uploadTurfImageHandler = asyncHandler(async (req: AuthRequest, res:
   })
 })
 
-// ----
+// NEW: GET /api/v1/admin/bookings - Get bookings for admin's turfs only
 export const getAdminBookingsHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   let turfIds: string[]
 
   if (req.user!.role === 'manager') {
     // Manager can see all bookings
-    const allTurfs = await Turf.find({ isActive: true })
-      .select('_id')
-      .lean<{ _id: Types.ObjectId }[]>()
-
+    const allTurfs = await Turf.find({ isActive: true }).select('_id').lean<{ _id: Types.ObjectId }[]>()
     turfIds = allTurfs.map(turf => turf._id.toString())
   }
   else {
     // Admin can only see their turf bookings
     const adminTurfs = await Turf.find({ admins: req.user!.id }).select('_id').lean<{ _id: Types.ObjectId }[]>()
     turfIds = adminTurfs.map(turf => turf._id.toString())
+
+    if (turfIds.length === 0) {
+      return res.status(200).json({
+        message: 'No turfs assigned to you.',
+        data: [],
+        meta: {
+          totalItems: 0,
+          totalPage: 0,
+          currentPage: 1,
+          itemsPerPage: 10,
+        },
+      })
+    }
   }
 
   const result = await paginate(
@@ -188,8 +198,10 @@ export const getAdminBookingsHandler = asyncHandler(async (req: AuthRequest, res
   })
 })
 
+// NEW: POST /api/v1/admin/bookings - Create booking (for walk-ins, phone bookings)
 export const createAdminBookingHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const validatedInput = createBookingSchema.parse(req.body)
+  const { userId } = req.body // Admin can book for specific user
 
   const turf = await findTurfById(validatedInput.turf)
   if (!turf) {
@@ -202,41 +214,77 @@ export const createAdminBookingHandler = asyncHandler(async (req: AuthRequest, r
     throw new AppError('Forbidden: you do not manage this turf', 403)
   }
 
-  // For admin bookings, skip payment and mark as confirmed
+  // Check if user exists (if booking for someone else)
+  if (userId) {
+    const user = await User.findById(userId)
+    if (!user) {
+      throw new AppError('User not found', 404)
+    }
+  }
+
+  // Check slot availability (same logic as regular booking)
+  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
+  const conflictingBooking = await Booking.findOne({
+    turf: validatedInput.turf,
+    date: validatedInput.date,
+    startTime: validatedInput.startTime,
+    $or: [
+      { status: 'confirmed' },
+      {
+        status: 'pending',
+        createdAt: { $gte: fifteenMinutesAgo },
+      },
+    ],
+  })
+
+  if (conflictingBooking) {
+    throw new AppError('This time slot is already booked or temporarily reserved', 409)
+  }
+
+  // Calculate pricing
   const pricingDetails = calculateBookingPrice(turf, validatedInput.date, validatedInput.startTime, validatedInput.endTime)
 
+  // Admin bookings are immediately confirmed
   const bookingData = {
     ...validatedInput,
-    user: validatedInput.user || req.user!.id, // Allow booking for other users
+    user: userId || req.user!.id, // Book for specified user or admin themselves
     appliedPricePerSlot: pricingDetails.pricePerSlot,
     totalPrice: pricingDetails.totalPrice,
     pricingRule: pricingDetails.appliedRule,
     dayType: pricingDetails.dayType,
-    status: 'confirmed', // Admin bookings are immediately confirmed
+    status: 'confirmed', // Admin bookings skip payment and are confirmed immediately
     paymentStatus: 'paid', // Assume cash payment or waived
+    expiresAt: undefined, // No expiration for confirmed bookings
   } as any
 
   const newBooking = await createBooking(bookingData)
 
   res.status(201).json({
     message: 'Admin booking created successfully.',
-    booking: newBooking,
+    data: newBooking,
   })
 })
 
+// NEW: PATCH /api/v1/admin/bookings/:id/cancel - Cancel booking
 export const cancelBookingHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id: bookingId } = req.params
 
-  const booking = await findBookingById(bookingId)
+  const booking = await Booking.findById(bookingId).populate('turf')
   if (!booking) {
     throw new AppError('Booking not found', 404)
   }
 
-  const turf = await Turf.findById(booking.turf)
-  const isAdminOfThisTurf = turf && turf.admins.some(adminId => adminId.equals(req.user!.id))
+  // Check permissions
+  const turf = booking.turf as any
+  const isAdminOfThisTurf = turf && turf.admins.some((adminId: any) => adminId.equals(req.user!.id))
 
   if (req.user!.role !== 'manager' && !isAdminOfThisTurf) {
-    throw new AppError('Forbidden: You are not authorized to perform this action.', 403)
+    throw new AppError('Forbidden: You are not authorized to cancel this booking.', 403)
+  }
+
+  // Can't cancel already cancelled bookings
+  if (booking.status === 'cancelled') {
+    throw new AppError('Booking is already cancelled', 400)
   }
 
   const updatedBooking = await updateBookingStatus(bookingId, 'cancelled')
@@ -247,17 +295,23 @@ export const cancelBookingHandler = asyncHandler(async (req: AuthRequest, res: R
   })
 })
 
+// NEW: DELETE /api/v1/admin/bookings/:id - Delete booking (manager only)
 export const deleteBookingHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id: bookingId } = req.params
 
-  const booking = await findBookingById(bookingId)
+  // Only managers can delete bookings
+  if (req.user!.role !== 'manager') {
+    throw new AppError('Forbidden: Only managers can delete bookings', 403)
+  }
+
+  const booking = await Booking.findById(bookingId)
   if (!booking) {
     throw new AppError('Booking not found', 404)
   }
 
   await Booking.findByIdAndDelete(bookingId)
 
-  res.status(200).json({
+  res.json({
     message: 'Booking deleted successfully.',
   })
 })

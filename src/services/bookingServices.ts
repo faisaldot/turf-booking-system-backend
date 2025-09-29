@@ -23,29 +23,38 @@ export async function findBookingById(bookingId: string) {
 
 // Turf Availability service
 export async function getTurfAvailability(turfId: string, date: Date) {
-  // Fetch the turf to get operating hours and pricing rules
   const turf = await Turf.findById(turfId)
   if (!turf) {
     throw new AppError('Turf not found', 404)
   }
 
-  // Get all existing bookings for that day to check against
   const startOfDay = new Date(date)
   startOfDay.setHours(0, 0, 0, 0)
 
   const endOfDay = new Date(date)
   endOfDay.setHours(23, 59, 59, 999)
 
-  const existingBookings = await Booking.find({
+  //  Get all bookings that make slots unavailable
+  const unavailableBookings = await Booking.find({
     turf: turfId,
     date: {
       $gte: startOfDay,
       $lt: endOfDay,
     },
-    status: { $ne: 'cancelled' },
-  }).select('startTime')
+    // A slot is unavailable if:
+    // 1. Booking is confirmed (paid or unpaid)
+    // 2. Booking is pending and created within last 15 minutes (temporary hold)
+    $or: [
+      { status: 'confirmed' }, // Always unavailable regardless of payment
+      {
+        status: 'pending',
+        createdAt: { $gte: new Date(Date.now() - 15 * 60 * 1000) },
+      },
+    ],
+  }).select('startTime status paymentStatus')
 
-  const bookedSlots = new Set(existingBookings.map(b => b.startTime))
+  // Create set of unavailable slots
+  const unavailableSlots = new Set(unavailableBookings.map(b => b.startTime))
 
   // Generate all possible 1-hour slots based on operating hours
   const availableSlots = []
@@ -62,13 +71,13 @@ export async function getTurfAvailability(turfId: string, date: Date) {
 
     const endTimeString = nextHour.toTimeString().substring(0, 5)
 
-    // For each slot, calculate price and check availability
+    // Calculate price for each slot
     const pricing = calculateBookingPrice(turf, date, startTimeString, endTimeString)
 
     availableSlots.push({
       startTime: startTimeString,
       endTime: endTimeString,
-      isAvailable: !bookedSlots.has(startTimeString),
+      isAvailable: !unavailableSlots.has(startTimeString), // FIXED: Use unavailableSlots set
       pricePerSlot: pricing.pricePerSlot,
       dayTypeLabel: pricing.dayType === 'friday-saturday' ? 'FRI-SAT' : 'SUN-THU',
     })

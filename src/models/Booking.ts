@@ -33,10 +33,7 @@ const bookingSchema = new mongoose.Schema<IBooking>({
   status: { type: String, enum: ['pending', 'confirmed', 'cancelled'], default: 'pending' },
   paymentStatus: { type: String, enum: ['unpaid', 'paid', 'refunded'] },
 
-  expiresAt: {
-    type: Date,
-    default: () => new Date(Date.now() + 15 * 60, 1000),
-  },
+  expiresAt: { type: Date },
 }, { timestamps: true })
 
 // Indexes for performance

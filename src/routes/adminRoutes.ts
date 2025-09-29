@@ -26,16 +26,16 @@ adminRouter.get('/dashboard', permitRoles('admin', 'manager'), getAdminDashboard
 // Turf management routes (admin and manager)
 adminRouter.patch('/turfs/:id/image', permitRoles('admin', 'manager'), upload.single('image'), uploadTurfImageHandler)
 
-// User management routes (manager only)
-adminRouter.get('/users', permitRoles('manager'), getAllUsersHandler)
-adminRouter.patch('/users/:id', permitRoles('manager'), updateUserHandler)
-
-adminRouter.post('/users/admin', permitRoles('manager'), createAdminHandler)
-adminRouter.patch('/users/:id/status', permitRoles('manager'), updateUserStatusHandler)
-
+// Booking management routes for admins
 adminRouter.get('/bookings', permitRoles('admin', 'manager'), getAdminBookingsHandler)
 adminRouter.post('/bookings', permitRoles('admin', 'manager'), createAdminBookingHandler)
 adminRouter.patch('/bookings/:id/cancel', permitRoles('admin', 'manager'), cancelBookingHandler)
-adminRouter.delete('/bookings/:id', permitRoles('manager'), deleteBookingHandler)
+adminRouter.delete('/bookings/:id', permitRoles('manager'), deleteBookingHandler) // Only managers can delete
+
+// User management routes (manager only)
+adminRouter.get('/users', permitRoles('manager'), getAllUsersHandler)
+adminRouter.patch('/users/:id', permitRoles('manager'), updateUserHandler)
+adminRouter.post('/users/admin', permitRoles('manager'), createAdminHandler)
+adminRouter.patch('/users/:id/status', permitRoles('manager'), updateUserStatusHandler)
 
 export default adminRouter
