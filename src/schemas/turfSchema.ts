@@ -16,6 +16,7 @@ const pricingRuleSchema = z.object({
   timeSlots: z.array(timeSlotSchema).min(1, 'At least one time slot is required per rule.'),
 })
 
+// FIXED: Added admins field validation
 export const createTurfSchema = z.object({
   name: z.string().min(3),
   location: z.object({
@@ -25,12 +26,17 @@ export const createTurfSchema = z.object({
   description: z.string().optional(),
 
   pricingRules: z.array(pricingRuleSchema).min(1, 'At least one pricing rule is required.'),
-  defaultPricePerSlot: z.number().nonnegative('Default price mus be a non-negative number.'),
+  defaultPricePerSlot: z.number().nonnegative('Default price must be a non-negative number.'),
 
   amenities: z.array(z.string()).optional(),
   images: z.array(z.url()).optional(),
   operatingHours: operatingHoursSchema,
   slug: z.string().optional(),
+
+  // FIXED: Added admins field - array of MongoDB ObjectId strings
+  admins: z.array(
+    z.string().regex(/^[0-9a-f]{24}$/i, 'Invalid MongoDB ObjectId format'),
+  ).optional(),
 })
 
 export const updatedTurfSchema = z.object({
@@ -46,6 +52,9 @@ export const updatedTurfSchema = z.object({
   images: z.array(z.url()).optional(),
   operatingHours: operatingHoursSchema.optional(),
   isActive: z.boolean().optional(),
-  admins: z.array(z.string()).optional(),
+  // FIXED: Better validation for admins - checks ObjectId format
+  admins: z.array(
+    z.string().regex(/^[0-9a-f]{24}$/i, 'Invalid MongoDB ObjectId format'),
+  ).optional(),
   slug: z.string().optional(),
 })

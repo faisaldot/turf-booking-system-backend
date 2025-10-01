@@ -6,7 +6,33 @@ import { User } from '../models/User'
 export async function getAdminDashboardStats(adminId: string) {
   console.log('🔍 DEBUG: getAdminDashboardStats called for:', adminId)
 
-  const adminObjectId = new mongoose.Types.ObjectId(adminId)
+  // FIXED: Ensure adminId is properly converted to ObjectId
+  let adminObjectId: mongoose.Types.ObjectId
+  try {
+    adminObjectId = new mongoose.Types.ObjectId(adminId)
+  }
+  catch {
+    console.error('❌ Invalid adminId format:', adminId)
+    return {
+      totalTurfs: 0,
+      totalRevenue: 0,
+      totalBookings: 0,
+      upcomingBookings: 0,
+      recentBookings: [],
+      monthlyBookings: [],
+      revenueByDayType: {
+        'sunday-thursday': 0,
+        'friday-saturday': 0,
+      },
+      bookingStatusCounts: {
+        pending: 0,
+        confirmed: 0,
+        cancelled: 0,
+        expired: 0,
+      },
+    }
+  }
+
   console.log('🔍 Admin ObjectId:', adminObjectId)
 
   // Step 1: Find all turfs managed by this admin
@@ -41,45 +67,63 @@ export async function getAdminDashboardStats(adminId: string) {
   // DEBUG: Check raw bookings data
   const allBookings = await Booking.find({ turf: { $in: turfIds } })
   console.log('🔍 Total bookings found:', allBookings.length)
-  console.log('🔍 Booking statuses:', allBookings.map(b => ({
+  console.log('🔍 Sample booking data:', allBookings.slice(0, 3).map(b => ({
+    id: b._id,
+    turf: b.turf,
     status: b.status,
     paymentStatus: b.paymentStatus,
     totalPrice: b.totalPrice,
+    dayType: b.dayType,
   })))
 
   // Step 2: Run aggregation with logging
   console.log('🔍 Running aggregation pipeline...')
 
   const [statsResult, recentBookings, monthlyStats] = await Promise.all([
-    // Main statistics aggregation
+    // Main statistics aggregation - FIXED
     Booking.aggregate([
-      { $match: { turf: { $in: turfIds } } },
+      {
+        $match: { turf: { $in: turfIds } },
+      },
       {
         $group: {
           _id: null,
+          // FIXED: Only count paid bookings for revenue
           totalRevenue: {
             $sum: {
               $cond: [
-                { $and: [{ $eq: ['$status', 'confirmed'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+                { $eq: ['$paymentStatus', 'paid'] },
                 '$totalPrice',
                 0,
               ],
             },
           },
           totalBookings: { $sum: 1 },
+          // FIXED: Upcoming bookings should be confirmed AND in the future
           upcomingBookings: {
             $sum: {
               $cond: [
-                { $and: [{ $gte: ['$date', new Date()] }, { $eq: ['$status', 'confirmed'] }] },
+                {
+                  $and: [
+                    { $gte: ['$date', new Date()] },
+                    { $eq: ['$status', 'confirmed'] },
+                  ],
+                },
                 1,
                 0,
               ],
             },
           },
+          // Revenue by day type
           revenueSundayThursday: {
             $sum: {
               $cond: [
-                { $and: [{ $eq: ['$dayType', 'sunday-thursday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+                {
+                  $and: [
+                    { $eq: ['$dayType', 'sunday-thursday'] },
+                    { $eq: ['$paymentStatus', 'paid'] },
+                  ],
+                },
                 '$totalPrice',
                 0,
               ],
@@ -88,12 +132,18 @@ export async function getAdminDashboardStats(adminId: string) {
           revenueFridaySaturday: {
             $sum: {
               $cond: [
-                { $and: [{ $eq: ['$dayType', 'friday-saturday'] }, { $eq: ['$paymentStatus', 'paid'] }] },
+                {
+                  $and: [
+                    { $eq: ['$dayType', 'friday-saturday'] },
+                    { $eq: ['$paymentStatus', 'paid'] },
+                  ],
+                },
                 '$totalPrice',
                 0,
               ],
             },
           },
+          // Booking status counts
           pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
           confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
           cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
@@ -107,9 +157,10 @@ export async function getAdminDashboardStats(adminId: string) {
       .populate('user', 'name email')
       .populate('turf', 'name')
       .sort({ createdAt: -1 })
-      .limit(10),
+      .limit(10)
+      .lean(),
 
-    // Monthly stats
+    // Monthly stats - FIXED: Last 30 days
     Booking.aggregate([
       {
         $match: {
@@ -136,10 +187,11 @@ export async function getAdminDashboardStats(adminId: string) {
     ]),
   ])
 
-  console.log('🔍 Stats result:', statsResult)
+  console.log('🔍 Stats result:', JSON.stringify(statsResult, null, 2))
   console.log('🔍 Recent bookings count:', recentBookings.length)
   console.log('🔍 Monthly stats count:', monthlyStats.length)
 
+  // FIXED: Provide default values if no results
   const stats = statsResult[0] || {
     totalRevenue: 0,
     totalBookings: 0,
@@ -154,31 +206,33 @@ export async function getAdminDashboardStats(adminId: string) {
 
   const finalStats = {
     totalTurfs: turfs.length,
-    totalRevenue: stats.totalRevenue,
-    totalBookings: stats.totalBookings,
-    upcomingBookings: stats.upcomingBookings,
+    totalRevenue: stats.totalRevenue || 0,
+    totalBookings: stats.totalBookings || 0,
+    upcomingBookings: stats.upcomingBookings || 0,
     recentBookings,
     monthlyBookings: monthlyStats,
     revenueByDayType: {
-      'sunday-thursday': stats.revenueSundayThursday,
-      'friday-saturday': stats.revenueFridaySaturday,
+      'sunday-thursday': stats.revenueSundayThursday || 0,
+      'friday-saturday': stats.revenueFridaySaturday || 0,
     },
     bookingStatusCounts: {
-      pending: stats.pending,
-      confirmed: stats.confirmed,
-      cancelled: stats.cancelled,
-      expired: stats.expired,
+      pending: stats.pending || 0,
+      confirmed: stats.confirmed || 0,
+      cancelled: stats.cancelled || 0,
+      expired: stats.expired || 0,
     },
   }
 
-  console.log('🔍 Final stats being returned:', JSON.stringify(finalStats, null, 2))
+  console.log('✅ Final stats being returned:', JSON.stringify(finalStats, null, 2))
   return finalStats
 }
 
 // ENHANCED: Calculate dashboard statistics for the platform manager (super admin)
 export async function getManagerDashboardStats() {
+  console.log('📊 Fetching manager dashboard stats')
+
   // Run all promises in parallel for better performance
-  const [userCount, adminCount, turfCount, bookingStats, revenueStats] = await Promise.all([
+  const [userCount, adminCount, turfCount, bookingStats, revenueStats, recentBookings] = await Promise.all([
     User.countDocuments({ role: 'user' }),
     User.countDocuments({ role: 'admin' }),
     Turf.countDocuments({ isActive: true }),
@@ -196,7 +250,7 @@ export async function getManagerDashboardStats() {
       },
     ]),
 
-    // Revenue statistics
+    // Revenue statistics - FIXED: Only count paid bookings
     Booking.aggregate([
       {
         $match: { paymentStatus: 'paid' },
@@ -209,6 +263,14 @@ export async function getManagerDashboardStats() {
         },
       },
     ]),
+
+    // Recent bookings
+    Booking.find()
+      .populate('user', 'name email')
+      .populate('turf', 'name location')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean(),
   ])
 
   const bookingStat = bookingStats[0] || {
@@ -223,7 +285,7 @@ export async function getManagerDashboardStats() {
     averageBookingValue: 0,
   }
 
-  return {
+  const finalStats = {
     // User statistics
     totalUsers: userCount,
     totalAdmins: adminCount,
@@ -236,7 +298,13 @@ export async function getManagerDashboardStats() {
     cancelledBookings: bookingStat.cancelledBookings,
 
     // Revenue statistics
-    totalRevenue: revenueStat.totalRevenue,
+    totalRevenue: revenueStat.totalRevenue || 0,
     averageBookingValue: Math.round(revenueStat.averageBookingValue || 0),
+
+    // Recent bookings
+    recentBookings,
   }
+
+  console.log('✅ Manager stats:', JSON.stringify(finalStats, null, 2))
+  return finalStats
 }

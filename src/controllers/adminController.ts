@@ -32,9 +32,12 @@ export const createAdminHandler = asyncHandler(async (req: AuthRequest, res: Res
   // Exclude password from the response
   const { password: _, ...userResponse } = adminUser.toObject()
 
+  // FIXED: Return the full user object including _id
   res.status(201).json({
     message: 'Admin account created successfully.',
     user: userResponse,
+    // Make sure _id is explicitly included
+    adminId: adminUser._id,
   })
 })
 
@@ -66,17 +69,26 @@ export const updateUserStatusHandler = asyncHandler(async (req: AuthRequest, res
 
 // GET /api/v1/admin/dashboard
 export const getAdminDashboardHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  console.log('🔍 Dashboard request from user:', {
+    userId: req.user!.id,
+    role: req.user!.role,
+  })
+
   let stats
 
   // if the user is a manager, get platform-wide stats.
   if (req.user!.role === 'manager') {
+    console.log('📊 Fetching manager dashboard stats')
     stats = await getManagerDashboardStats()
   }
   else {
     // otherwise, get stats only for the turfs this admin manages
+    console.log('📊 Fetching admin dashboard stats for:', req.user!.id)
     const adminId = req.user!.id
     stats = await getAdminDashboardStats(adminId)
   }
+
+  console.log('✅ Dashboard stats retrieved:', JSON.stringify(stats, null, 2))
 
   res.status(200).json({
     message: 'Dashboard statistics retrieved successfully.',
@@ -124,14 +136,20 @@ export const updateUserHandler = asyncHandler(async (req: AuthRequest, res: Resp
 export const uploadTurfImageHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id: turfId } = req.params
 
+  console.log('📸 Image upload request for turf:', turfId)
+  console.log('📸 File received:', req.file ? 'Yes' : 'No')
+
   if (!req.file) {
     throw new AppError('No image file provided', 400)
   }
 
   const turf = await findTurfById(turfId)
   if (!turf) {
+    console.error('❌ Turf not found:', turfId)
     throw new AppError('Turf not found.', 404)
   }
+
+  console.log('✅ Turf found:', turf.name)
 
   // Authorization check
   const isAdminForThisTurf = turf.admins.some(adminId => adminId.equals(req.user!.id))
@@ -139,15 +157,22 @@ export const uploadTurfImageHandler = asyncHandler(async (req: AuthRequest, res:
     throw new AppError('Forbidden: you do not manage this turf.', 403)
   }
 
+  console.log('📤 Uploading to Cloudinary...')
+
   // Upload the file to Cloudinary in a 'turfs' folder
   const imageUrl = await uploadToCloudinary(req.file, 'turfs')
+
+  console.log('✅ Image uploaded:', imageUrl)
 
   // Add the new image URL to the turf's images array
   const updatedTurf = await updateTurf(turfId, { $push: { images: imageUrl } })
 
+  console.log('✅ Turf updated with new image')
+
   res.status(200).json({
     message: 'Image uploaded and turf updated successfully.',
     data: updatedTurf,
+    imageUrl, // Return the image URL for frontend reference
   })
 })
 
