@@ -1,12 +1,21 @@
+// src/config/env.ts
 import path from 'node:path'
 import dotenv from 'dotenv'
 
-// Load environment-specific .env file
-const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development'
-dotenv.config({ path: path.resolve(process.cwd(), envFile) })
+// Only load .env files in development/local environments
+// In production, use platform environment variables (Render, Railway, etc.)
+if (process.env.NODE_ENV !== 'production') {
+  const envFile = process.env.NODE_ENV === 'test'
+    ? '.env.test'
+    : '.env.development'
 
-// Also load .env.local if it exists (for local overrides)
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+  dotenv.config({ path: path.resolve(process.cwd(), envFile) })
+
+  // Load .env.local for local overrides (optional)
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
+
+  console.log(`🔧 Loaded environment from ${envFile}`)
+}
 
 export const env = {
   // Basic Configuration
@@ -85,13 +94,12 @@ if (process.env.NODE_ENV === 'production') {
     'CLOUDINARY_API_SECRET',
     'MANAGER_EMAIL',
     'MANAGER_PASSWORD',
-    'MANAGER_NAME',
   ]
 
-  for (const varName of requiredVars) {
-    if (!process.env[varName]) {
-      throw new Error(`Missing required environment variable: ${varName}`)
-    }
+  const missingVars = requiredVars.filter(varName => !process.env[varName])
+
+  if (missingVars.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`)
   }
 
   // Validate JWT secrets length
@@ -102,24 +110,20 @@ if (process.env.NODE_ENV === 'production') {
     throw new Error('JWT_REFRESH_SECRET must be at least 32 characters long in production')
   }
 
-  // Validate URLs
-  if (!env.CLIENT_URL.startsWith('https://') && !env.CLIENT_URL.startsWith('http://localhost')) {
+  // Validate URLs use HTTPS in production
+  if (!env.CLIENT_URL.startsWith('https://')) {
     console.warn('⚠️  CLIENT_URL should use HTTPS in production')
   }
-  if (!env.SERVER_URL.startsWith('https://') && !env.SERVER_URL.startsWith('http://localhost')) {
+  if (!env.SERVER_URL.startsWith('https://')) {
     console.warn('⚠️  SERVER_URL should use HTTPS in production')
   }
 
-  // Validate manager password strength
-  if (env.MANAGER_PASSWORD.length < 8) {
-    throw new Error('MANAGER_PASSWORD must be at least 8 characters long in production')
-  }
+  console.log('✅ Production environment variables validated')
 }
 
 // Development warnings
 if (process.env.NODE_ENV === 'development') {
-  console.log('🔧 Development mode configuration loaded')
   if (env.JWT_SECRET.includes('fallback')) {
-    console.warn('⚠️  Using fallback JWT secrets. Consider setting proper secrets in .env.development')
+    console.warn('⚠️  Using fallback JWT secrets. Set proper secrets in .env.development')
   }
 }
