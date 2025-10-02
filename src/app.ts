@@ -28,22 +28,29 @@ app.use(cookieParser())
 // FIXED: Enhanced CORS configuration for cookies
 const corsOptions = {
   origin(origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps, Postman, curl)
-    if (!origin)
+    if (!origin) {
       return callback(null, true)
+    }
 
     const allowedOrigins = [
-      env.CLIENT_URL,
-      env.SERVER_URL,
-      env.PUBLIC_URL,
+      env.CLIENT_URL, // http://localhost:5173
+      env.SERVER_URL, // https://your-app.onrender.com
+      env.PUBLIC_URL, // https://your-app.onrender.com
       'http://localhost:5173',
       'http://localhost:5174',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:5174',
-      'https://sandbox.sslcommerz.com',
-    ]
-    // Also allow ngrok URLs if in development
-    if (env.NODE_ENV === 'development' && (origin.includes('ngrok') || origin.includes('loca.lt'))) {
+      'https://sandbox.sslcommerz.com', // SSLCommerz sandbox
+      'https://securepay.sslcommerz.com', // SSLCommerz production
+    ].filter(Boolean) // Remove undefined values
+
+    // Allow any localhost in development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true)
+    }
+
+    // Allow ngrok/localtunnel in development
+    if (env.NODE_ENV !== 'production' && (origin.includes('ngrok') || origin.includes('loca.lt'))) {
       return callback(null, true)
     }
 
@@ -51,7 +58,7 @@ const corsOptions = {
       callback(null, true)
     }
     else {
-      console.warn(`CORS blocked origin: ${origin}`)
+      console.warn(`❌ CORS blocked origin: ${origin}`)
       callback(new Error('Not allowed by CORS'))
     }
   },
@@ -70,6 +77,7 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204,
 }
+
 app.use(cors(corsOptions))
 
 // FIXED: Enhanced helmet configuration
