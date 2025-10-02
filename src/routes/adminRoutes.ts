@@ -7,6 +7,7 @@ import {
   getAdminBookingsHandler,
   getAdminDashboardHandler,
   getAllUsersHandler,
+  updateBookingPaymentHandler,
   updateUserHandler,
   updateUserStatusHandler,
   uploadTurfImageHandler,
@@ -29,8 +30,9 @@ adminRouter.patch('/turfs/:id/image', permitRoles('admin', 'manager'), upload.si
 // Booking management routes for admins
 adminRouter.get('/bookings', permitRoles('admin', 'manager'), getAdminBookingsHandler)
 adminRouter.post('/bookings', permitRoles('admin', 'manager'), createAdminBookingHandler)
+adminRouter.patch('/bookings/:id/payment', permitRoles('admin', 'manager'), updateBookingPaymentHandler)
 adminRouter.patch('/bookings/:id/cancel', permitRoles('admin', 'manager'), cancelBookingHandler)
-adminRouter.delete('/bookings/:id', permitRoles('manager'), deleteBookingHandler) // Only managers can delete
+adminRouter.delete('/bookings/:id', permitRoles('admin', 'manager'), deleteBookingHandler)
 
 // User management routes (manager only)
 adminRouter.get('/users', permitRoles('manager'), getAllUsersHandler)

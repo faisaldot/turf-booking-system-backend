@@ -320,18 +320,57 @@ export const cancelBookingHandler = asyncHandler(async (req: AuthRequest, res: R
   })
 })
 
-// NEW: DELETE /api/v1/admin/bookings/:id - Delete booking (manager only)
+export const updateBookingPaymentHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id: bookingId } = req.params
+  const { paymentStatus } = req.body
+
+  if (paymentStatus !== 'paid') {
+    throw new AppError('Invalid payment status. Only "paid" is allowed.', 400)
+  }
+
+  const booking = await Booking.findById(bookingId).populate('turf')
+  if (!booking) {
+    throw new AppError('Booking not found', 404)
+  }
+
+  // Authorization check
+  const turf = booking.turf as any
+  const isAdminOfThisTurf = turf && turf.admins.some((adminId: any) => adminId.equals(req.user!.id))
+  if (req.user!.role !== 'manager' && !isAdminOfThisTurf) {
+    throw new AppError('Forbidden: You are not authorized to modify this booking.', 403)
+  }
+
+  booking.paymentStatus = 'paid'
+  // If the booking was pending, confirming it is a logical next step
+  if (booking.status === 'pending') {
+    booking.status = 'confirmed'
+  }
+
+  await booking.save()
+
+  res.json({
+    message: 'Booking has been marked as paid.',
+    data: booking,
+  })
+})
+
+// Find the existing deleteBookingHandler and replace it with this corrected version
 export const deleteBookingHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { id: bookingId } = req.params
 
-  // Only managers can delete bookings
-  if (req.user!.role !== 'manager') {
-    throw new AppError('Forbidden: Only managers can delete bookings', 403)
-  }
-
-  const booking = await Booking.findById(bookingId)
+  const booking = await Booking.findById(bookingId).populate('turf')
   if (!booking) {
     throw new AppError('Booking not found', 404)
+  }
+
+  // CORRECTED PERMISSION LOGIC
+  if (req.user!.role !== 'manager') {
+    const turf = booking.turf as any
+    const isAdminOfThisTurf = turf && turf.admins.some((adminId: any) => adminId.equals(req.user!.id))
+
+    if (!isAdminOfThisTurf) {
+      throw new AppError('Forbidden: You are not authorized to delete this booking.', 403)
+    }
   }
 
   await Booking.findByIdAndDelete(bookingId)

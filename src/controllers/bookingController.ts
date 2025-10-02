@@ -165,3 +165,31 @@ export const updateBookingStatusHandler = asyncHandler(async (req: AuthRequest, 
     data: updatedBooking,
   })
 })
+
+export const cancelMyBookingHandler = asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { id: bookingId } = req.params
+
+  const booking = await findBookingById(bookingId)
+  if (!booking) {
+    throw new AppError('Booking not found', 404)
+  }
+
+  // Ensure the booking belongs to the authenticated user
+  if (booking.user._id.toString() !== req.user!.id) {
+    throw new AppError('Forbidden: You are not authorized to cancel this booking.', 403)
+  }
+
+  // Optional: Add business logic here, e.g., prevent cancellation if the booking is too soon.
+
+  // Only allow cancellation of pending bookings
+  if (booking.status !== 'pending') {
+    throw new AppError('Only pending bookings can be cancelled.', 400)
+  }
+
+  const updatedBooking = await updateBookingStatus(bookingId, 'cancelled')
+
+  res.json({
+    message: 'Booking cancelled successfully.',
+    data: updatedBooking,
+  })
+})
