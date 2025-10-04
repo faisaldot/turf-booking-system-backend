@@ -56,4 +56,6 @@ userSchema.methods.createPasswordResetToken = function () {
   return resetToken
 }
 
+userSchema.index({ role: 1, isActive: 1 })
+
 export const User = mongoose.model<IUser>('User', userSchema)

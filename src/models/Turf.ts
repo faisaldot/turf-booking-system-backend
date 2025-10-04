@@ -81,7 +81,7 @@ turfSchema.pre('save', function (next) {
 })
 
 // Adding indexes for performance
-turfSchema.index({ 'location.city': 1, 'isActive': 1 }) // For filltering turfs by city
-turfSchema.index({ 'pricingRules.dayTypes': 1 }) //  For potential searches based on pricing models
+turfSchema.index({ 'location.city': 1, 'isActive': 1 })
+turfSchema.index({ 'pricingRules.dayType': 1 })
 
 export const Turf = mongoose.model<ITurf>('Turf', turfSchema)
