@@ -26,9 +26,6 @@ importers:
       express:
         specifier: ^5.1.0
         version: 5.1.0
-      express-mongo-sanitize:
-        specifier: ^2.2.0
-        version: 2.2.0
       express-rate-limit:
         specifier: ^8.1.0
         version: 8.1.0(express@5.1.0)
@@ -1727,10 +1724,6 @@ packages:
   expect-type@1.2.2:
     resolution: {integrity: sha512-JhFGDVJ7tmDJItKhYgJCGLOWjuK9vPxiXoUFLwLDc99NlmklilbiQJwoctZtt13+xMw91MCk/REan6MWHqDjyA==}
     engines: {node: '>=12.0.0'}
-
-  express-mongo-sanitize@2.2.0:
-    resolution: {integrity: sha512-PZBs5nwhD6ek9ZuP+W2xmpvcrHwXZxD5GdieX2dsjPbAbH4azOkrHbycBud2QRU+YQF1CT+pki/lZGedHgo/dQ==}
-    engines: {node: '>=10'}
 
   express-rate-limit@8.1.0:
     resolution: {integrity: sha512-4nLnATuKupnmwqiJc27b4dCFmB/T60ExgmtDD7waf4LdrbJ8CPZzZRHYErDYNhoz+ql8fUdYwM/opf90PoPAQA==}
@@ -5113,8 +5106,6 @@ snapshots:
   etag@1.8.1: {}
 
   expect-type@1.2.2: {}
-
-  express-mongo-sanitize@2.2.0: {}
 
   express-rate-limit@8.1.0(express@5.1.0):
     dependencies:

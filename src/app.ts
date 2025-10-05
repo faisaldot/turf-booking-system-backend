@@ -1,7 +1,6 @@
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
-import mongoSanitize from 'express-mongo-sanitize'
 import helmet from 'helmet'
 import mongoose from 'mongoose'
 import morgan from 'morgan'
@@ -21,7 +20,6 @@ const app = express()
 app.set('trust proxy', 1)
 
 // Middlewares
-app.use(mongoSanitize())
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 
