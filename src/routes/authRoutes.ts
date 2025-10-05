@@ -14,7 +14,7 @@ authRouter.post('/login', authRateLimit, login)
 authRouter.post('/refresh-token', refreshToken)
 
 // Password reset routes
-authRouter.post('/forgot-password', forgotPassword)
+authRouter.post('/forgot-password', authRateLimit, forgotPassword)
 authRouter.patch('/reset-password/:token', resetPassword)
 
 // Protected routes

@@ -33,9 +33,9 @@ export const env = {
   PUBLIC_URL: process.env.PUBLIC_URL,
 
   // JWT Configuration
-  JWT_SECRET: process.env.JWT_SECRET ?? 'fallback-dev-secret-key-minimum-32-characters',
+  JWT_SECRET: process.env.JWT_SECRET!,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? '1h',
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? 'fallback-dev-refresh-secret-key-minimum-32-characters',
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET!,
   REFRESH_EXPIRES_IN: process.env.REFRESH_EXPIRES_IN ?? '7d',
 
   // Security

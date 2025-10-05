@@ -1,7 +1,9 @@
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
+import mongoSanitize from 'express-mongo-sanitize'
 import helmet from 'helmet'
+import mongoose from 'mongoose'
 import morgan from 'morgan'
 import { env } from './config/env'
 import { requireAuth } from './middlewares/authMiddleware'
@@ -19,13 +21,14 @@ const app = express()
 app.set('trust proxy', 1)
 
 // Middlewares
-app.use(express.json({ limit: '10mb' }))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(mongoSanitize())
+app.use(express.json({ limit: '1mb' }))
+app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 
-// FIXED: Configure cookie parser properly
+//  Configure cookie parser properly
 app.use(cookieParser())
 
-// FIXED: Enhanced CORS configuration for cookies
+// Enhanced CORS configuration for cookies
 const corsOptions = {
   origin(origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
     if (!origin) {
@@ -111,12 +114,18 @@ app.use((req, res, next) => {
 })
 
 // Health check route
-app.get('/api/v1/health', (_req, res) => {
-  res.json({
+app.get('/api/v1/health', async (_req, res) => {
+  const health = {
     status: 'ok',
-    now: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development',
-  })
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV,
+    version: process.env.npm_package_version,
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    memory: process.memoryUsage(),
+  }
+
+  res.status(health.database === 'connected' ? 200 : 503).json(health)
 })
 
 // API routes

@@ -12,7 +12,11 @@ export async function createBooking(data: Partial<IBooking>) {
 
 // Find booking service
 export async function findBookingByUser(userId: string) {
-  return await Booking.find({ user: userId }).populate('turf', 'name location')
+  return await Booking.find({ user: userId })
+    .populate('turf', 'name location images')
+    .select('-__v')
+    .sort({ createdAt: -1 })
+    .lean()
 }
 
 // Find booking service by id
