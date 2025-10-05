@@ -31,6 +31,11 @@ const userSchema = new mongoose.Schema<IUser>({
   passwordResetExpires: Date,
 }, { timestamps: true })
 
+// Add indexes for performance
+userSchema.index({ email: 1 }, { unique: true })
+userSchema.index({ role: 1, isActive: 1 })
+userSchema.index({ isVerified: 1, isActive: 1 })
+
 // Hash password
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
@@ -55,7 +60,5 @@ userSchema.methods.createPasswordResetToken = function () {
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000
   return resetToken
 }
-
-userSchema.index({ role: 1, isActive: 1 })
 
 export const User = mongoose.model<IUser>('User', userSchema)
