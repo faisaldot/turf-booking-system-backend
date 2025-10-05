@@ -34,9 +34,10 @@ const corsOptions = {
     }
 
     const allowedOrigins = [
-      env.CLIENT_URL, // http://localhost:5173
-      env.SERVER_URL, // https://your-app.onrender.com
-      env.PUBLIC_URL, // https://your-app.onrender.com
+      env.CLIENT_URL,
+      env.SERVER_URL,
+      env.PUBLIC_URL,
+      'https://khelbinaki.vercel.app',
       'http://localhost:5173',
       'http://localhost:5174',
       'http://127.0.0.1:5173',
